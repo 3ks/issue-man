@@ -1,4 +1,4 @@
-package operator
+package operation
 
 import (
 	"issue-man/model"
@@ -7,10 +7,10 @@ import (
 )
 
 // 每个操作的格式
-type Operator func(issue server.Issue, comment server.Commenter)
+type Operato func(issue server.Issue, comment server.Commenter)
 
 // 支持的操作列表
-var ops map[string]Operator
+var ops map[string]Operato
 
 // 单人可领取 Issue 数量限制
 var MaxIssue int
@@ -51,7 +51,7 @@ func Handing(i model.IssueHook,c model.IssueQuery){
 func InitOperator(c int) {
 	MaxIssue = c
 
-	ops = make(map[string]Operator)
+	ops = make(map[string]Operato)
 	ops[IAccept] = Accept
 	ops[IPush] = Push
 	ops[IMerged] = Merge

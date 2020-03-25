@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 type IssueHook struct {
 	Action string `json:"action"`
 	Issue  struct {

@@ -1,5 +1,5 @@
 // 更新或评论 issue
-package operator
+package operation
 
 import (
 	"bytes"

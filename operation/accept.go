@@ -1,4 +1,4 @@
-package operator
+package operation
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ func Accept(i server.Issue, c server.Commenter) {
 
 	// 仅状态为 status/sPending 的 issue 可以领取
 	nowStatus := getStatus(i.Labels)
-	if nowStatus != sPending {
+	if nowStatus != SPending {
 		// 忽略？提示？
 		return
 	}
