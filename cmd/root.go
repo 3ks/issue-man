@@ -34,7 +34,9 @@ var rootCmd = &cobra.Command{
 		server.Start(token, maxAcceptIssue)
 	},
 	// todo 子命令，查看配置文件
-	// todo 子命令，不仅是管理 issue 状态，考虑 issue 的生命周期管理？包括扫描已有 issue，去重，创建等。
+	// todo 子命令，不仅是管理 issue 状态，
+	// 	 考虑 issue 的生命周期管理？包括扫描已有 issue，
+	//	 去重，创建等。 issue-man 接收一个指定格式的列表，然后去重，初始化，等该数据由使用者自行提供。
 }
 
 func Execute() {
