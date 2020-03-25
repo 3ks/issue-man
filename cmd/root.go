@@ -37,6 +37,7 @@ var rootCmd = &cobra.Command{
 	// todo 子命令，不仅是管理 issue 状态，
 	// 	 考虑 issue 的生命周期管理？包括扫描已有 issue，
 	//	 去重，创建等。 issue-man 接收一个指定格式的列表，然后去重，初始化，等该数据由使用者自行提供。
+	// todo 功能，看板同步 issue 状态（思路：issue 发生变化，（get 看板列表，看 issue 的 card 是否在正确的列，如果不再，）将其移动至正确的列）
 }
 
 func Execute() {

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"issue-man/server"
+	"issue-man/client"
 	"time"
 )
 
@@ -279,9 +279,9 @@ type IssueHook struct {
 	} `json:"sender"`
 }
 
-// todo 不同操作根据自己的需求提取信息，而不是这样返回部分信息。
+// todo 为不同操作实现不同方法，为其提取需要的信息
 // 获取 Issue 信息
-func (r IssueHook) GetIssue() (i server.Issue) {
+func (r IssueHook) GetIssue() (i client.Issue) {
 	// repository url and name
 	i.URL.RepositoryURL = r.Repository.URL
 	i.URL.RepositoryName = r.Repository.FullName
@@ -310,7 +310,7 @@ func (r IssueHook) GetIssue() (i server.Issue) {
 }
 
 // 获取 Issue 内容
-func (r IssueHook) GetComment() (c server.Commenter) {
+func (r IssueHook) GetComment() (c client.Commenter) {
 	c.Login = r.Comment.User.Login
 	c.Body = r.Comment.Body
 	return c

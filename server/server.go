@@ -14,7 +14,7 @@ import (
 func Start(t string, c int) {
 
 	initClient(t)
-	operator.initOperator(c)
+	operation.initOperator(c)
 
 	router := gin.Default()
 

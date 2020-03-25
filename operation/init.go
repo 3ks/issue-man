@@ -1,13 +1,13 @@
 package operation
 
 import (
+	client2 "issue-man/client"
 	"issue-man/model"
-	"issue-man/server"
 	"strings"
 )
 
 // 每个操作的格式
-type Operato func(issue server.Issue, comment server.Commenter)
+type Operato func(issue client2.Issue, comment client2.Commenter)
 
 // 支持的操作列表
 var ops map[string]Operato
@@ -35,7 +35,7 @@ const (
 	SFinish    = "status/merged"
 )
 
-func Handing(i model.IssueHook,c model.IssueQuery){
+func Handing(p model.IssueHook){
 	// split \n ?
 	// 有对应指令则执行对应操作
 	// todo 先提取指令，再调用方法
@@ -48,6 +48,7 @@ func Handing(i model.IssueHook,c model.IssueQuery){
 		}
 	}
 }
+
 func InitOperator(c int) {
 	MaxIssue = c
 
@@ -64,7 +65,7 @@ func InitOperator(c int) {
 
 // 限制 Accept 的 issue 数量
 func tooManyIssue(url, login string) bool {
-	return server.GetIssueCount(url, login) >= MaxIssue
+	return client2.GetIssueCount(url, login) >= MaxIssue
 }
 
 // 判断评论中是 assigner

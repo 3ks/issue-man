@@ -1,5 +1,5 @@
 // 更新或评论 issue
-package server
+package client
 
 import (
 	"bytes"
@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"issue-man/model"
-	"issue-man/operator"
+	"issue-man/operation"
 	"net/http"
+
+	 "github.com/google/go-github/v30/github"
 )
 
 var (
@@ -16,29 +18,29 @@ var (
 	header http.Header
 )
 
-type Issue struct {
-	Title     string   `json:"title"`
-	Body      string   `json:"body"`
-	Milestone int      `json:"milestone,omitempty"`
-	State     string   `json:"state"`
-	Assignees []string `json:"assignees,omitempty"`
-	Labels    []string `json:"labels"`
-	URL       URLs     `json:"-"`
-}
-
-type Commenter struct {
-	Login string `json:"login"`
-	Body  string `json:"body"`
-}
-
-type URLs struct {
-	RepositoryURL  string `json:"-"`
-	RepositoryName string `json:"-"`
-
-	ID          int    `json:"-"` // IssueID
-	IssueURL    string `json:"-"`
-	CommentsURL string `json:"-"`
-}
+//type Issue struct {
+//	Title     string   `json:"title"`
+//	Body      string   `json:"body"`
+//	Milestone int      `json:"milestone,omitempty"`
+//	State     string   `json:"state"`
+//	Assignees []string `json:"assignees,omitempty"`
+//	Labels    []string `json:"labels"`
+//	URL       URLs     `json:"-"`
+//}
+//
+//type Commenter struct {
+//	Login string `json:"login"`
+//	Body  string `json:"body"`
+//}
+//
+//type URLs struct {
+//	RepositoryURL  string `json:"-"`
+//	RepositoryName string `json:"-"`
+//
+//	ID          int    `json:"-"` // IssueID
+//	IssueURL    string `json:"-"`
+//	CommentsURL string `json:"-"`
+//}
 
 // 更新 Issue
 // 获取原始数据
@@ -47,6 +49,7 @@ type URLs struct {
 // /merged: 评论、修改label
 func UpdateIssue(v Issue) (err error) {
 
+	client := github.NewClient(nil)
 	data, _ := json.Marshal(v)
 	req, _ := http.NewRequest(http.MethodPost, v.URL.IssueURL, bytes.NewReader(data))
 	req.Header = header
@@ -112,7 +115,7 @@ func CommentIssue(v Comment) {
 // 处于 waiting-for-pr 状态
 func GetIssueCount(url, login string) int {
 
-	url = fmt.Sprintf("%s?state=%s&assignee=%s&labels=%s", url, "open", login, operator.waiting)
+	url = fmt.Sprintf("%s?state=%s&assignee=%s&labels=%s", url, "open", login, operation.SWaiting)
 
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req.Header = header

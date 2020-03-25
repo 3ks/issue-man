@@ -2,11 +2,11 @@ package operation
 
 import (
 	"fmt"
-	"issue-man/server"
+	client2 "issue-man/client"
 )
 
 // /pushed
-func Push(i server.Issue, c server.Commenter) {
+func Push(i client2.Issue, c client2.Commenter) {
 	// 仅状态为 status/translating 且评论人在 assignees 列表中才可生效
 	nowStatus := getStatus(i.Labels)
 	if nowStatus != SWaiting || loginNotInAssignees(i.Assignees, c.Login) {
@@ -17,6 +17,6 @@ func Push(i server.Issue, c server.Commenter) {
 
 	// 修改 label
 	i.Labels = replaceStatus(i.Labels, SWaiting, SReviewing)
-	server.UpdateIssue(i)
+	client2.UpdateIssue(i)
 }
 

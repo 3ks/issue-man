@@ -2,11 +2,11 @@ package operation
 
 import (
 	"fmt"
-	"issue-man/server"
+	client2 "issue-man/client"
 )
 
 // Merge
-func Merge(i server.Issue, c server.Commenter) {
+func Merge(i client2.Issue, c client2.Commenter) {
 	// 仅状态为 status/reviewing 且评论人在 assignees 列表中才可生效
 	nowStatus := getStatus(i.Labels)
 	if nowStatus != SReviewing || loginNotInAssignees(i.Assignees, c.Login) {
@@ -19,6 +19,6 @@ func Merge(i server.Issue, c server.Commenter) {
 	// 修改 label
 	i.Labels = replaceStatus(i.Labels, SReviewing, SFinish)
 	i.State = "closed"
-	server.UpdateIssue(i)
+	client2.UpdateIssue(i)
 }
 
