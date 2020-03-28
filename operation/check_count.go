@@ -31,7 +31,8 @@ func CheckCount(info Info, labels []string, limit int) bool {
 		fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
 		return false
 	}
-	// 不能超过 limit 限制
+
+	// 不超过 limit 限制
 	if len(is) < limit {
 		return true
 	}

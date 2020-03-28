@@ -8,7 +8,7 @@ import (
 
 var client *c.Client
 
-// 单例模式
+// 需要先初始化，才能正常使用
 func Get() *c.Client {
 	return client
 }

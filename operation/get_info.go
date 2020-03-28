@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// 存储 IssueCommentPayload 里的一些信息
+// 基本是目前进行各种操作需要用到的信息
 type Info struct {
 	// 仓库信息
 	Owner      string
@@ -27,6 +29,8 @@ type Info struct {
 	Labels      []string
 }
 
+// 从 IssueCommentPayload 里的一些信息
+// 避免多次书写出现错误
 func GetInfo(payload github.IssueCommentPayload) (info Info) {
 	defer func() {
 		if p := recover(); p != nil {

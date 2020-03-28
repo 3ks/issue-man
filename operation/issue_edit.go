@@ -20,9 +20,6 @@ const (
 // 但是，一般来说，改动的内容只涉及 label，assignees，state
 // 而 title，body，milestone 不会改变
 func IssueEdit(info Info, flow instruction.Flow) {
-	//fmt.Sprintf("Sorry @%s, We found that you have claimed %d issues, in order to ensure the quality of each issue, please complete those before claiming new one.", c.Login, MaxIssue)
-	//fmt.Sprintf("Thank you @%s, this issue had been assigned to you.", c.Login)
-
 	// 一般不会变化的内容
 	req := &gg.IssueRequest{
 		Title:     &info.Title,
@@ -30,11 +27,12 @@ func IssueEdit(info Info, flow instruction.Flow) {
 		Milestone: &info.Milestone,
 	}
 
+	closeIssue := IssueOpen
 	// 是否关闭 issue
 	if flow.Close {
-		info.State = IssueClosed
+		closeIssue = IssueClosed
 	}
-	req.State = &info.State
+	req.State = &closeIssue
 
 	// 更新 label（如果有的话）
 	updateLabel(req, info, flow)

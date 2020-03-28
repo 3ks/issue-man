@@ -8,7 +8,24 @@ package instruction
 type Flow struct {
 
 	// 指令名
-	Name string
+	Name string `mapstructure:"name"`
+
+	// 权限验证，指定可以执行该操作的人员。
+	// 注意：可以执行该操作，不表示该操作一定会完成，这取决于实际流程限制。
+	// 可选的参数有：anyone, member, self, Maintainers。默认为空，表示不允许执行指令。
+	// issue-man 会按照 maintainers、self、member、anyone 的顺序检查，一旦满足，立即返回 true，否则返回 false。
+	// anyone 对执行该指令的人无要求，例如：/cc @someone
+	// member 要求执行该指令的人是组织的 member，例如：/accept
+	// self 要求执行该指令的人在 assigns 列表中，例如：只能 /unassign 已经分配给自己它的 issue。
+	// Maintainers 要求执行改操作的成员在 Maintainers 列表内，例如 /unassign @another，则直接将 another 从 assigns 列表移除。
+	// 一般地，Maintainers 成员，总是有足够的权限执行各种指令。（即一般都要为指令带上 Maintainers 参数）
+	Permission []string `mapstructure:"permission"`
+
+	// 未通过权限验证时的提示信息，如果为空，则表示不提示，默认为空。
+	// issue-man 中的文字，可以传入一些占位符，目前支持的有：@somebody
+	// 例如：@somebody thank you!
+	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
+	PermissionFeedback string `mapstructure:"permission_feedback"`
 
 	// 如何处理 comment 提及的人
 	// 可选的值有：addition, remove, none
@@ -16,64 +33,47 @@ type Flow struct {
 	// 为 remove，则将提及的人从 assignees 列表中移除
 	// 为 none 则不做处理
 	// 为空，或其他值，效果与 none 相同，默认为空。
-	Mention string
-
-	// 权限验证，指定可以执行该操作的人员。
-	// 注意：可以执行该操作，不表示该操作一定会完成，这取决于实际流程限制。
-	// 可选的参数有：anyone, member, self, Maintainers。默认为空，表示不允许执行指令。
-	// issue-man 会按照 Maintainers、self、member、anyone 的顺序检查，一旦满足，立即返回 true，否则返回 false。
-	// anyone 对执行该指令的人无要求，例如：/cc @someone
-	// member 要求执行该指令的人是组织的 member，例如：/accept
-	// self 要求执行该指令的人在 assigns 列表中，例如：只能 /unassign 已经分配给自己它的 issue。
-	// Maintainers 要求执行改操作的成员在 Maintainers 列表内，例如 /unassign @another，则直接将 another 从 assigns 列表移除。
-	// 一般地，Maintainers 成员，总是有足够的权限执行各种指令。（即一般都要为指令带上 Maintainers 参数）
-	Permission []string
-
-	// 未通过权限验证时的提示信息，如果为空，则表示不提示，默认为空。
-	// issue-man 中的文字，可以传入一些占位符，目前支持的有：@somebody
-	// 例如：@somebody thank you!
-	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
-	PermissionFeedback string
+	Mention string `mapstructure:"mention"`
 
 	// 当前阶段 label
 	// 一般进入下一阶段的状态后，会移除这些 label
 	// 并且，如果当前 issue 不包含这些 label，则表示当前 issue 不满足当前条件，终止操作。
 	// 如果列表为空，则表示该指令不涉及移除 label
-	CurrentLabel []string
+	CurrentLabel []string `mapstructure:"current_label"`
 
 	// 目标状态 label
 	// 一般进入下一阶段的状态后，会添加这些 label
 	// 如果目标 label 不存在，GitHub 是会自动创建的，也就是说，对于新仓库，其实不需要手动创建 label
 	// 如果列表为空，则表示该指令不涉及添加 label
-	TargetLabel []string
+	TargetLabel []string `mapstructure:"target_label"`
 
 	// 成功进入目标状态后的文字提示，如果为空，则表示不提示，默认为空
 	// issue-man 中的文字，可以传入一些占位符，目前支持的有：@somebody
 	// 例如：@somebody thank you!
 	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
-	SuccessFeedback string
+	SuccessFeedback string `mapstructure:"success_feedback"`
 
 	// 未能成功进入目标状态时的文字提示，如果为空，则表示不提示，默认为空
 	// issue-man 中的文字，可以传入一些占位符，目前支持的有：@somebody
 	// 例如：@somebody thank you!
 	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
-	FailFeedback string
+	FailFeedback string `mapstructure:"fail_feedback"`
 
 	// 目标状态的数量限制，0 表示无限制，默认为 0
 	// 一般只有表示“处理中”的这种状态的 issue，才需要进行数量的限制。
 	// 大不多的阶段都是不需要做限制的，例如“已关闭”，“已结束”等。
-	TargetLimit int
+	TargetLimit int `mapstructure:"target_limit"`
 
 	// 当触发数量限制时的文字提示，如果为空，则表示不提示，默认为空
 	// issue-man 中的文字，可以传入一些占位符，目前支持的有：@somebody @count
 	// 例如：@somebody sorry can't accept more than @count issue!
 	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
 	// issue-man 会自动将 @count 替换为 TargetLimit。
-	LimitFeedBack string
+	LimitFeedBack string `mapstructure:"limit_feed_back"`
 
 	// 指定该指令是否会关闭 issue，一般只有关闭 issue 的指令才会将该值置为 true
 	// 默认为 false，即不关闭 issue
-	Close bool
+	Close bool `mapstructure:"close"`
 
 	// issue 与 project 的关联操作，如果 issue 与 project 需要联动，则需要配置下面的项。
 	// 这一部分需要提供一些 ID，实际上，我们在 web 界面看到的数字是 Number，而不是 ID
@@ -90,16 +90,16 @@ type Flow struct {
 	// ProjectID uint
 
 	// 当前 ColumnID
-	CurrentColumnID int64
+	CurrentColumnID int64 `mapstructure:"current_column_id"`
 
 	// 目标 ColumnID
-	TargetColumnID int64
+	TargetColumnID int64 `mapstructure:"target_column_id"`
 
 	// 目标位置，即选择移动至目标 Column 的顶部还是底部。
 	// 支持 top 和 bottom，默认 top。
 	// 实际上 GitHub 还支持精确的移动到某个 card 后面，但是这需要提供 card_id，对于用户来说，这太难了。
-	TargetPosition string
+	TargetPosition string `mapstructure:"target_position"`
 
 	// 移动 card 后的文字提示，为空则不提示，默认为空
-	ColumnFeedback string
+	ColumnFeedback string `mapstructure:"column_feedback"`
 }

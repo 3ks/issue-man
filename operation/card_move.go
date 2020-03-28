@@ -11,7 +11,7 @@ import (
 
 // 移动 issue 对应的 card（如果有的的话）
 func CardMove(info Info, flow instruction.Flow) {
-	client.Get().Teams.ListTeamMembersByID()
+	// 先获取 card 列表
 	cards, resp, err := client.Get().Projects.ListProjectCards(context.TODO(), flow.CurrentColumnID, nil)
 	if err != nil {
 		fmt.Printf("list column card fail. err: %v\n", err.Error())
@@ -21,6 +21,8 @@ func CardMove(info Info, flow instruction.Flow) {
 		fmt.Printf("list column card maybe fail. status code: %v\n", resp.StatusCode)
 		return
 	}
+	// 遍历寻找 content_url 与当前 issue_url 相同的 card
+	// 将其视为关联的 card，并将其移动至目标 column
 	for _, v := range cards {
 		if *v.ContentURL == info.IssueURL {
 			req := &gg.ProjectCardMoveOptions{

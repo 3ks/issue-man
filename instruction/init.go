@@ -1,5 +1,10 @@
 package instruction
 
+import (
+	"github.com/spf13/viper"
+	"issue-man/config"
+)
+
 // 指令及其对应的 Flow
 // 每个指令对应一个 Flow
 // 支持哪些指令，取决于配置文件内容
@@ -8,22 +13,24 @@ package instruction
 var Instructions map[string]Flow
 
 // Maintainers
-//
 var Maintainers map[string]bool
 
-// 指令
-const (
-	IAccept   = "/accept"
-	IPush     = "/pushed"
-	IMerged   = "/merged"
-	IAssign   = "/assign"
-	IUnassign = "/unassign"
-)
+func Init() {
+	conf, ok := viper.Get("config").(*config.Config)
+	if !ok {
+		panic("viper get config fail")
+	}
 
-// 状态
-const (
-	SPending   = "status/spending"
-	SWaiting   = "status/waiting-for-pr"
-	SReviewing = "status/reviewing"
-	SFinish    = "status/merged"
-)
+	Instructions = make(map[string]Flow)
+	Maintainers = make(map[string]bool)
+
+	// flow map
+	for _, v := range conf.Flows {
+		Instructions[v.Name] = v
+	}
+
+	// maintain map
+	for _, v := range conf.Maintains {
+		Maintainers[v] = true
+	}
+}

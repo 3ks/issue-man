@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/instruction"
-	"strings"
 )
 
 // is 是一个指令 map，其中：
@@ -14,6 +13,8 @@ func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 	for k, v := range is {
 		if _, ok := instruction.Instructions[k]; ok {
 			do(k, v, payload)
+		} else {
+			fmt.Printf("unkown instruction: %s, mention: %#v\n", k, v)
 		}
 	}
 }
@@ -25,26 +26,23 @@ func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 // 拼装数据
 // 发送 Update Issue 请求
 // 发送 Move Card 请求（如果有的话）
-//
-// 在检查过程中，随时可能会 comment，并 return，
+//-----------------------------------------
+// 在检查过程中，随时可能会 comment，并 return
 // 这取决于 issue 的实际情况和流程定义
-func do(instruction string, mention []string, payload github.IssueCommentPayload) {
-	// todo 日志，配置
-	fmt.Printf("do: %s, mention: %s, payload: %#v\n", instruction, mention, payload)
+func do(ins string, mention []string, payload github.IssueCommentPayload) {
+	fmt.Printf("do: %s, mention: %#v, payload: %#v\n", ins, mention, payload)
 
 	// 基本信息
 	info := GetInfo(payload)
 	info.Mention = mention
-	flow := instruction.Instructions[instruction]
-	commentBody := ""
+	flow := instruction.Instructions[ins]
 
 	// 权限检查
 	if !CheckPermission(flow.Permission, info) {
 		if flow.PermissionFeedback == "" {
 			return
 		}
-		commentBody = strings.ReplaceAll(flow.PermissionFeedback, "@somebody", info.Login)
-		IssueComment(info, commentBody)
+		IssueComment(info, HandComment(flow.PermissionFeedback, info.Login, 0))
 		return
 	}
 
@@ -53,18 +51,16 @@ func do(instruction string, mention []string, payload github.IssueCommentPayload
 		if flow.FailFeedback == "" {
 			return
 		}
-		commentBody = strings.ReplaceAll(flow.PermissionFeedback, "@somebody", info.Login)
-		IssueComment(info, commentBody)
+		IssueComment(info, HandComment(flow.FailFeedback, info.Login, 0))
 		return
 	}
 
 	// 数量检查
 	if !CheckCount(info, flow.TargetLabel, flow.TargetLimit) {
-		if flow.FailFeedback == "" {
+		if flow.LimitFeedBack == "" {
 			return
 		}
-		commentBody = strings.ReplaceAll(flow.PermissionFeedback, "@somebody", info.Login)
-		IssueComment(info, commentBody)
+		IssueComment(info, HandComment(flow.LimitFeedBack, info.Login, flow.TargetLimit))
 		return
 	}
 

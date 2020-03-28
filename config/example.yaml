@@ -1,0 +1,74 @@
+full_repository_name: "gorda/gorda.io"
+maintains:
+  - "GuangmingLuo"
+  - "gorda"
+  - "ikingye"
+  - "malphi"
+  - "rootsongjc"
+  - "stormgbs"
+  - "sunny0826"
+  - "wangfakang"
+  - "zhaohuabing"
+flows:
+  # /accept 指令
+  - name: "/accept"
+    permission:
+      - "maintainers"
+      - "member"
+    current_label:
+      - "status/spending"
+    target_label:
+      - "status/waiting-for-pr"
+    success_feedback: "Thank you @somebody, this issue had been assigned to you."
+    target_limit: 10
+    limit_feed_back: "Sorry @somebody, We found that you have claimed @count issues, in order to ensure the quality of each issue, please complete those before claiming new one."
+    current_column_id: 9001
+    target_column_id: 9002
+    target_position: "top"
+
+  # /pushed 指令
+  - "name": "/pushed"
+    permission:
+      - "maintainers"
+      - "self"
+    current_label:
+      - "status/waiting-for-pr"
+    target_label:
+      - "status/reviewing"
+
+  # /merged 指令
+  - "name": "/merged"
+    permission:
+      - "maintainers"
+      - "self"
+    current_label:
+      - "status/reviewing"
+    target_label:
+      - "status/merged"
+    close: true
+
+  # /init 指令
+  - name: "/init"
+    permission:
+      - "maintainers"
+    target_label:
+      - "kind/page"
+      - "release/v0.3"
+      - "status/pending"
+
+  # /assign
+  - name: "/assign"
+    permission:
+      - "maintainers"
+    mentation: "addition"
+
+  # /unassign 指令，解除分配
+  - name: "/unassign"
+    permission:
+      - "maintainers"
+      - "self"
+    mentation: "remove"
+port: ":8080"
+log_dir: "./log/"
+log_file: "hook.log"
+std_out_file: "hook.std.log"
