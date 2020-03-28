@@ -13,8 +13,26 @@
 //			否则，回复提示
 package main
 
-import "issue-man/cmd"
+import (
+	"flag"
+	"genanchor/bot/server"
+	"os"
+)
+
+var (
+	token          string
+	maxAcceptIssue int
+)
 
 func main() {
-	cmd.Execute()
+	// todo 以仓库为单位设置配置
+	flag.StringVar(&token, "t", "nil", "person token")
+	flag.IntVar(&maxAcceptIssue, "c", 0, "max accept issue count")
+	flag.Parse()
+
+	fd, _ := os.OpenFile("bot.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	os.Stdout = fd
+	os.Stderr = fd
+
+	server.Start(token, maxAcceptIssue)
 }
