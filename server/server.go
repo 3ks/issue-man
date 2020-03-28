@@ -2,19 +2,21 @@
 package server
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"issue-man/operator"
+	"gopkg.in/go-playground/webhooks.v5/github"
 	"log"
-	"net"
 	"net/http"
-	"time"
 )
 
+var (
+	hook *github.Webhook
+)
 func Start(t string, c int) {
 
-	initClient(t)
-	operation.initOperator(c)
+	//initClient(t)
+	//operation.initOperator(c)
+
+	hook, _ = github.New()
 
 	router := gin.Default()
 
@@ -28,7 +30,7 @@ func Start(t string, c int) {
 		Handler: router,
 	}
 
-	// 服务连接
+
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("listen: %s\n", err)
 	}

@@ -8,18 +8,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 var (
 	token          string
 	maxAcceptIssue int
 )
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&token, "token", "f", "", "GitHub Person Token.")
 	rootCmd.PersistentFlags().IntVarP(&maxAcceptIssue, "count", "c", 0, "Max accept issues by one human.")
 	// todo 指定配置文件、输出目录
 	// todo 以仓库为单位设置配置
 	// todo 动态读取配置 watch?
-
 }
 
 var rootCmd = &cobra.Command{
