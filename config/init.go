@@ -1,8 +1,7 @@
-package instruction
+package config
 
 import (
 	"github.com/spf13/viper"
-	"issue-man/config"
 )
 
 // 指令及其对应的 Flow
@@ -16,7 +15,7 @@ var Instructions map[string]Flow
 var Maintainers map[string]bool
 
 func Init() {
-	conf, ok := viper.Get("config").(*config.Config)
+	conf, ok := viper.Get("config").(*Config)
 	if !ok {
 		panic("viper get config fail")
 	}

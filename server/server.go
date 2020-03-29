@@ -6,7 +6,6 @@ import (
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/client"
 	"issue-man/config"
-	"issue-man/instruction"
 	"log"
 	"net/http"
 )
@@ -31,7 +30,7 @@ func Start(token string) {
 	client.Init(token)
 
 	// 初始化指令及 maintainer
-	instruction.Init()
+	config.Init()
 
 	// 初始化处理的事件列表
 	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}

@@ -1,0 +1,19 @@
+name: IssueMan Action
+on:
+  push:
+    branches:
+      - release
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CheckOut
+        uses: actions/checkout@v2
+
+      - name: Publish Docker image to Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          snapshot: true
+          name: qksl/issue-man
+          username: qksl
+          password: ${{ secrets.DOCKER_PASSWORD }}

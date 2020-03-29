@@ -5,7 +5,7 @@ import (
 	"fmt"
 	gg "github.com/google/go-github/v30/github"
 	"issue-man/client"
-	"issue-man/instruction"
+	"issue-man/config"
 	"net/http"
 	"strings"
 )
@@ -19,7 +19,7 @@ const (
 // 具体修改内容完全取决于配置文件
 // 但是，一般来说，改动的内容只涉及 label，assignees，state
 // 而 title，body，milestone 不会改变
-func IssueEdit(info Info, flow instruction.Flow) {
+func IssueEdit(info Info, flow config.Flow) {
 	// 一般不会变化的内容
 	req := &gg.IssueRequest{
 		Title:     &info.Title,
@@ -59,12 +59,15 @@ func IssueEdit(info Info, flow instruction.Flow) {
 }
 
 // 根据 flow 更新 info 中的 label
-func updateLabel(req *gg.IssueRequest, info Info, flow instruction.Flow) {
+func updateLabel(req *gg.IssueRequest, info Info, flow config.Flow) {
+	// 先移除当前阶段的 label
 	current := make(map[string]bool)
 	for _, v := range flow.CurrentLabel {
 		current[v] = true
 	}
 
+	// 在添加下一阶段的 label
+	// 对于想要保留的 label，只需要将其添加到 target_label 列表即可保留
 	labels := make([]string, 0)
 	labels = append(labels, flow.TargetLabel...)
 	for _, v := range info.Labels {
@@ -77,7 +80,7 @@ func updateLabel(req *gg.IssueRequest, info Info, flow instruction.Flow) {
 }
 
 // 根据 flow 更新 info 中的 assignees
-func updateAssign(req *gg.IssueRequest, info Info, flow instruction.Flow) {
+func updateAssign(req *gg.IssueRequest, info Info, flow config.Flow) {
 	switch flow.Mention {
 	case "addition":
 		info.Assignees = append(info.Assignees, info.Mention...)

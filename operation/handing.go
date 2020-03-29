@@ -3,7 +3,7 @@ package operation
 import (
 	"fmt"
 	"gopkg.in/go-playground/webhooks.v5/github"
-	"issue-man/instruction"
+	"issue-man/config"
 )
 
 // is 是一个指令 map，其中：
@@ -11,7 +11,7 @@ import (
 // value 为提及人员，可能为空
 func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 	for k, v := range is {
-		if _, ok := instruction.Instructions[k]; ok {
+		if _, ok := config.Instructions[k]; ok {
 			do(k, v, payload)
 		} else {
 			fmt.Printf("unkown instruction: %s, mention: %#v\n", k, v)
@@ -35,7 +35,7 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 	// 基本信息
 	info := GetInfo(payload)
 	info.Mention = mention
-	flow := instruction.Instructions[ins]
+	flow := config.Instructions[ins]
 
 	// 权限检查
 	if !CheckPermission(flow.Permission, info) {
@@ -57,10 +57,10 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 
 	// 数量检查
 	if !CheckCount(info, flow.TargetLabel, flow.TargetLimit) {
-		if flow.LimitFeedBack == "" {
+		if flow.LimitFeedback == "" {
 			return
 		}
-		IssueComment(info, HandComment(flow.LimitFeedBack, info.Login, flow.TargetLimit))
+		IssueComment(info, HandComment(flow.LimitFeedback, info.Login, flow.TargetLimit))
 		return
 	}
 

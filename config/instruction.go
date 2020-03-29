@@ -1,4 +1,4 @@
-package instruction
+package config
 
 // Flow 定义了一个指令的工作流程
 // 每个指令对应一个 Flow
@@ -12,7 +12,7 @@ type Flow struct {
 
 	// 权限验证，指定可以执行该操作的人员。
 	// 注意：可以执行该操作，不表示该操作一定会完成，这取决于实际流程限制。
-	// 可选的参数有：anyone, member, self, Maintainers。默认为空，表示不允许执行指令。
+	// 可选的参数有：anyone, member, self, maintainers。默认为空，表示不允许执行指令。
 	// issue-man 会按照 maintainers、self、member、anyone 的顺序检查，一旦满足，立即返回 true，否则返回 false。
 	// anyone 对执行该指令的人无要求，例如：/cc @someone
 	// member 要求执行该指令的人是组织的 member，例如：/accept
@@ -69,7 +69,7 @@ type Flow struct {
 	// 例如：@somebody sorry can't accept more than @count issue!
 	// issue-man 会自动将 @somebody 替换为 comment 该指令的那个人。
 	// issue-man 会自动将 @count 替换为 TargetLimit。
-	LimitFeedBack string `mapstructure:"limit_feed_back"`
+	LimitFeedback string `mapstructure:"limit_feedback"`
 
 	// 指定该指令是否会关闭 issue，一般只有关闭 issue 的指令才会将该值置为 true
 	// 默认为 false，即不关闭 issue

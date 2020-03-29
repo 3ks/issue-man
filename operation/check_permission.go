@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"issue-man/client"
-	"issue-man/instruction"
+	"issue-man/config"
 )
 
 const (
@@ -40,7 +40,7 @@ func CheckPermission(permission []string, info Info) bool {
 
 	// Maintainers 可以操作
 	if _, ok := ps[Maintainer]; ok {
-		if _, ok := instruction.Maintainers[info.Login]; ok {
+		if _, ok := config.Maintainers[info.Login]; ok {
 			return true
 		}
 	}

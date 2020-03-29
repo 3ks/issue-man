@@ -16,18 +16,18 @@ flows:
       - "maintainers"
       - "member"
     current_label:
-      - "status/spending"
+      - "status/pending"
     target_label:
       - "status/waiting-for-pr"
     success_feedback: "Thank you @somebody, this issue had been assigned to you."
     target_limit: 10
-    limit_feed_back: "Sorry @somebody, We found that you have claimed @count issues, in order to ensure the quality of each issue, please complete those before claiming new one."
+    limit_feedback: "Sorry @somebody, We found that you have claimed @count issues, in order to ensure the quality of each issue, please complete those before claiming new one."
     current_column_id: 9001
     target_column_id: 9002
     target_position: "top"
 
   # /pushed 指令
-  - "name": "/pushed"
+  - name: "/pushed"
     permission:
       - "maintainers"
       - "self"
@@ -37,7 +37,7 @@ flows:
       - "status/reviewing"
 
   # /merged 指令
-  - "name": "/merged"
+  - name: "/merged"
     permission:
       - "maintainers"
       - "self"
