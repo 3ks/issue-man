@@ -20,6 +20,8 @@ import (
 func ParseInstruct(body string) (instructs map[string][]string) {
 	instructs = make(map[string][]string)
 
+	// 替换字符
+	body=strings.ReplaceAll(body,"\r\n","\n")
 	// 按行分割
 	s := strings.SplitN(body, "\n", -1)
 
