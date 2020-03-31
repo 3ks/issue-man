@@ -30,15 +30,16 @@ func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 // 在检查过程中，随时可能会 comment，并 return
 // 这取决于 issue 的实际情况和流程定义
 func do(ins string, mention []string, payload github.IssueCommentPayload) {
-	fmt.Printf("do: %s, mention: %#v, payload: %#v\n", ins, mention, payload)
-
 	// 基本信息
 	info := GetInfo(payload)
 	info.Mention = mention
 	flow := config.Instructions[ins]
 
+	fmt.Printf("do: %s, mention: %#v, info: %#v\n", ins, mention, info)
+
 	// 权限检查
 	if !CheckPermission(flow.Permission, info) {
+		fmt.Printf("check permission fail. require: %v\n", flow.Permission)
 		if flow.PermissionFeedback == "" {
 			return
 		}
@@ -48,6 +49,7 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 
 	// 标签（状态）检查
 	if !CheckLabel(info.Labels, flow.CurrentLabel) {
+		fmt.Printf("check label fail. require: %v\n", flow.CurrentLabel)
 		if flow.FailFeedback == "" {
 			return
 		}
@@ -57,6 +59,7 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 
 	// 数量检查
 	if !CheckCount(info, flow.TargetLabel, flow.TargetLimit) {
+		fmt.Printf("check count fail. require: %v\n", flow.TargetLimit)
 		if flow.LimitFeedback == "" {
 			return
 		}

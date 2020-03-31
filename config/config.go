@@ -5,7 +5,7 @@ type Config struct {
 	FullRepositoryName string `mapstructure:"full_repository_name"`
 
 	// Maintains 列表
-	Maintains []string `mapstructure:"maintains"`
+	Maintainers []string `mapstructure:"maintainers"`
 
 	// 通过配置文件定义任务流程
 	Flows []Flow `mapstructure:"flows"`

@@ -29,7 +29,7 @@ func Init() {
 	}
 
 	// maintain map
-	for _, v := range conf.Maintains {
+	for _, v := range conf.Maintainers {
 		Maintainers[v] = true
 	}
 }

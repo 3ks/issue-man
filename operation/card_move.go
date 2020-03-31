@@ -60,7 +60,7 @@ func CardMove(info Info, flow config.Flow) {
 				return
 			}
 			if flow.ColumnFeedback != "" {
-				IssueComment(info, strings.ReplaceAll(flow.ColumnFeedback, "@somebody", info.Login))
+				IssueComment(info, strings.ReplaceAll(flow.ColumnFeedback, "@somebody", fmt.Sprintf("@%s", info.Login)))
 			}
 			break
 		}

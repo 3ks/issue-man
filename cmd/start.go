@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"issue-man/config"
 	"issue-man/server"
 	"os"
 	"path"
 	"strings"
-
-	"github.com/spf13/viper"
 )
 
 const (
@@ -27,7 +26,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&token, "token", "f", "", "GitHub Person Token.")
+	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
 	rootCmd.PersistentFlags().StringVarP(&c, "config", "c", "", "指定配置文件路径")
 }
 
@@ -40,8 +39,11 @@ func start() {
 	} else {
 		// 如果指定了配置文件，则读取配置文件
 		viper.SetConfigName(strings.TrimSuffix(path.Base(c), path.Ext(c)))
-		viper.SetConfigType(path.Ext(c))
 		viper.AddConfigPath(path.Dir(c))
+	}
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("read in config fail. config: %v,  err: %v", strings.TrimSuffix(path.Base(c), path.Ext(c)), err))
 	}
 
 	// 如果 token 为空，则尝试从环境变量读取 token
@@ -64,11 +66,11 @@ func start() {
 	server.Start(token)
 }
 
-// 重定向标准版输出和标准错误
+// 重定向标准输出和标准错误
 func openStdFile() {
 	fd, err := os.OpenFile(path.Join(conf.LogDir, conf.StdOutFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		_ = os.MkdirAll(conf.LogDir, os.ModeDir)
+		_ = os.Mkdir(conf.LogDir, os.ModeDir)
 		fd, err = os.OpenFile(path.Join(conf.LogDir, conf.StdOutFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Printf("open stdout file fail. err: %v", err.Error())
@@ -96,10 +98,11 @@ func initConf() {
 		conf.LogFile = "issue-man.log"
 	}
 	if conf.StdOutFile == "" {
-		conf.LogFile = "issue-man.std.log"
+		conf.StdOutFile = "issue-man.std.log"
 	}
 	if conf.Port == "" {
 		conf.Port = ":8080"
 	}
+	fmt.Printf("load config: %#v\n", conf)
 	viper.Set("config", conf)
 }

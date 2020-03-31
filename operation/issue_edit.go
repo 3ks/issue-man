@@ -53,7 +53,7 @@ func IssueEdit(info Info, flow config.Flow) {
 
 	// 创建文本提示
 	if flow.SuccessFeedback != "" {
-		commentBody := strings.ReplaceAll(flow.SuccessFeedback, "@somebody", info.Login)
+		commentBody := strings.ReplaceAll(flow.SuccessFeedback, "@somebody", fmt.Sprintf("@%s", info.Login))
 		IssueComment(info, commentBody)
 	}
 }
@@ -81,6 +81,13 @@ func updateLabel(req *gg.IssueRequest, info Info, flow config.Flow) {
 
 // 根据 flow 更新 info 中的 assignees
 func updateAssign(req *gg.IssueRequest, info Info, flow config.Flow) {
+	defer func() {
+		req.Assignees = &info.Assignees
+	}()
+	// todo 提出
+	if flow.Name == "/accept" {
+		info.Assignees = append(info.Assignees, info.Login)
+	}
 	switch flow.Mention {
 	case "addition":
 		info.Assignees = append(info.Assignees, info.Mention...)

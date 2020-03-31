@@ -1,5 +1,5 @@
 full_repository_name: "gorda/gorda.io"
-maintains:
+maintainers:
   - "gorda"
 flows:
   # /accept 指令

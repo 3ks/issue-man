@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	Maintainer = "Maintainers"
+	Maintainer = "maintainers"
 	Self       = "self"
 	Member     = "member"
 	Anyone     = "anyone"
