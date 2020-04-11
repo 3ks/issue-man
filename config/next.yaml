@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Repository
+metadata:
+  name: "gorda.io"
+spec:
+  selector:
+    org: "gorda"
+    repository: "gorda.io"
+  maintainer:
+    - "aaa"
+    - "bbb"
+    - "ccc"
+  token: "xxx"
+---
+apiVersion: v1
+kind: Issue
+metadata:
+  name: "issue-create"
+spec:
+  selector:
+    org: "gorda"
+    repository: "gorda.io"
+  title: "-"
+  labels:
+  - "status/welcome"
+  - "kind/page"
+  - "release/v0.3"
+  assignees:
+  - "noone"
+  milestone: 1
+---
+apiVersion: v1
+kind: IssueComment
+metadata:
+  name: "gorda.io-issue-confirm"
+spec:
+  selector:
+    org: "gorda"
+    repository: "gorda.io"
+  labels:
+    - "status/pending"
+  success: "this issue has ..."
+  fail: "sorry ..."
+  rules:
+    instruct: "confirm"
+    permision:
+    - "@maintainer"
+    labels:
+    - "status/welcome"
+---
+apiVersion: v1
+kind: IssueComment
+metadata:
+  name: "gorda.io-issue-accept"
+spec:
+  selector:
+    org: "gorda"
+    repository: "gorda.io"
+  labels:
+    - "status/accept"
+  limit: 10
+  assignees:
+    - "@commentator"
+  success: "thank you ..."
+  fail: "sorry ..."
+  projects:
+    id: 9527
+    column: 10086
+  rules:
+    instruct: "accept"
+    permision:
+      - "@member"
+    assignees:
+      - "@commentator"
+    labels:
+      - "status/pending"
+    remove_labels:
+      - "status/stale" # /pushed 可移除的 label，但不要求必须存在
+    deadline:
+      warn:
+        in: 14 # day
+        detection_at: "00:00"
+        feedback_at: "09:00"
+        feedback: "@somebody, please finish the issue as soon as possible, thank you very much."
+        skip_weekend: true
+      undo:
+        in: 28
+        detection_at: "00:00"
+        feedback_at: "09:00"
+        feedback: "@somebody, please finish the issue as soon as possible, thank you very much."
+        skip_weekend: true
+    projects:
+      id: 9527
+      column: 10010
+---
+apiVersion: v1
+kind: PullRequest
+metadata:
+  name: "gorda.io-issue-accept"
+spec:
+  selector:
+    org: "gorda"
+    repository: "gorda.io"
+    ...
