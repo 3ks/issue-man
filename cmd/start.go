@@ -60,7 +60,7 @@ func start() {
 	initConf()
 
 	// 重定向标准版输出和标准错误
-	openStdFile()
+	//openStdFile()
 
 	// 初始化服务相关的东西
 	server.Start(token)

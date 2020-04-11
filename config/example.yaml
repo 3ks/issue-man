@@ -1,4 +1,5 @@
 full_repository_name: "gorda/gorda.io"
+verbose: false
 maintainers:
   - "GuangmingLuo"
   - "gorda"
@@ -9,6 +10,8 @@ maintainers:
   - "sunny0826"
   - "wangfakang"
   - "zhaohuabing"
+detection_at: "09:00"
+skip_weekend: true
 flows:
   # /accept 指令
   - name: "/accept"
@@ -25,7 +28,30 @@ flows:
     current_column_id: 9001
     target_column_id: 9002
     target_position: "top"
-
+    jobs:
+    - name: "warn"
+      in: 14 # day
+      labels: # 在该状态停留超过一定时间，则提醒
+        - "status/waiting-for-pr"
+      target_label:  # 添加该 label
+        - "status/stale"
+        - "status/waiting-for-pr"
+      assignees_policy: "@keep_all"
+      feedback: "@somebody, please finish the issue as soon as possible, thank you."
+    - name: "undo"
+      in: 14
+      labels: # 在该状态停留超过一定时间，则释放 issue
+        - "status/stale"
+      remove_labels: # 移除该 label
+        - "status/stale"
+        - "status/waiting-for-pr"
+      target_label:  # 添加该 label
+        - "status/pending"
+      assignees_policy: "@remove_all"
+      current_column_id: 9002 # Project 恢复到原来的 column
+      target_column_id: 9001
+      target_position: "top"
+      feedback: "Everyone can accept the issue now."
   # /pushed 指令
   - name: "/pushed"
     permission:

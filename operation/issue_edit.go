@@ -67,13 +67,16 @@ func updateLabel(req *gg.IssueRequest, info Info, flow config.Flow) {
 	}
 
 	// 在添加下一阶段的 label
-	// 对于想要保留的 label，只需要将其添加到 target_label 列表即可保留
+	// 对于想要保留的 label（目前会删除 current_label），只需要将其添加到 target_label 列表即可保留
 	labels := make([]string, 0)
+	// target label 总是会直接添加
 	labels = append(labels, flow.TargetLabel...)
 	for _, v := range info.Labels {
+		// flow.CurrentLabel 的 label 会被忽略
 		if _, ok := current[v]; ok {
 			continue
 		}
+		// 不在 flow.CurrentLabel 的 label 会添加至新列表
 		labels = append(labels, v)
 	}
 	req.Labels = &labels
@@ -94,6 +97,7 @@ func updateAssign(req *gg.IssueRequest, info Info, flow config.Flow) {
 	case "remove":
 		removeAssign(req, info)
 	default:
+		// assignees 不增不减
 		return
 	}
 }

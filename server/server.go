@@ -35,6 +35,9 @@ func Start(token string) {
 	// 初始化处理的事件列表
 	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}
 
+	// 定时任务
+	go job(*conf)
+
 	// 定义监听路由
 	router := gin.Default()
 
