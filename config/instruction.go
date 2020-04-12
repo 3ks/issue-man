@@ -104,21 +104,4 @@ type Flow struct {
 
 	// 移动 card 后的文字提示，为空则不提示，默认为空
 	ColumnFeedback string `mapstructure:"column_feedback"`
-
-	// 任务
-	// todo 抽取为单独的对象
-	Jobs []Job `mapstructure:"jobs"`
-}
-
-type Job struct {
-	Name            string   `mapstructure:"name"`
-	In              int64    `mapstructure:"in"`
-	Labels          []string `mapstructure:"labels"`
-	RemoveLabels    []string `mapstructure:"remove_labels"`
-	TargetLabels    []string `mapstructure:"target_label"`
-	AssigneesPolicy string   `mapstructure:"assignees_policy"`
-	CurrentColumnID int64    `mapstructure:"current_column_id"`
-	TargetColumnID  int64    `mapstructure:"target_column_id"`
-	TargetPosition  string   `mapstructure:"target_position"`
-	Feedback        string   `mapstructure:"feedback"`
 }

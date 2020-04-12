@@ -144,7 +144,6 @@ func judgeState(owner, repository string, issueNumber int, labels []string, in i
 			// todo 暂时视作仅一个 label
 			if *es[i].Label.Name == labels[0] {
 				// 判断持续时间
-
 				if time.Now().Sub(*es[i].CreatedAt).Milliseconds() > ((int64(time.Hour) * 24 * in) / 1000 / 1000) {
 					// 需要做点什么
 					fmt.Printf("need do something\n")

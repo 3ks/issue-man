@@ -19,6 +19,9 @@ type Config struct {
 	// 通过配置文件定义任务流程
 	Flows []Flow `mapstructure:"flows"`
 
+	// 任务
+	Jobs []Job `mapstructure:"jobs"`
+
 	// 其它设置
 	// 监听端口
 	Port string `mapstructure:"port"`
@@ -28,4 +31,18 @@ type Config struct {
 	LogFile string `mapstructure:"log_file"`
 	// 标准输出文件，默认为 issue-man.std.log（位于 LogDir 下）
 	StdOutFile string `mapstructure:"std_out_file"`
+}
+
+// Job
+type Job struct {
+	Name            string   `mapstructure:"name"`
+	In              int64    `mapstructure:"in"`
+	Labels          []string `mapstructure:"labels"`
+	RemoveLabels    []string `mapstructure:"remove_labels"`
+	TargetLabels    []string `mapstructure:"target_label"`
+	AssigneesPolicy string   `mapstructure:"assignees_policy"`
+	CurrentColumnID int64    `mapstructure:"current_column_id"`
+	TargetColumnID  int64    `mapstructure:"target_column_id"`
+	TargetPosition  string   `mapstructure:"target_position"`
+	Feedback        string   `mapstructure:"feedback"`
 }
