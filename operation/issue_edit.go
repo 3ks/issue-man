@@ -60,10 +60,10 @@ func IssueEdit(info Info, flow config.Flow) {
 
 // 根据 flow 更新 info 中的 label
 func updateLabel(req *gg.IssueRequest, info Info, flow config.Flow) {
-	// 先移除当前阶段的 label
-	current := make(map[string]bool)
-	for _, v := range flow.CurrentLabel {
-		current[v] = true
+	// 需要移除的 label
+	remove := make(map[string]bool)
+	for _, v := range flow.RemoveLabel {
+		remove[v] = true
 	}
 
 	// 在添加下一阶段的 label
@@ -72,11 +72,11 @@ func updateLabel(req *gg.IssueRequest, info Info, flow config.Flow) {
 	// target label 总是会直接添加
 	labels = append(labels, flow.TargetLabel...)
 	for _, v := range info.Labels {
-		// flow.CurrentLabel 的 label 会被忽略
-		if _, ok := current[v]; ok {
+		// flow.RemoveLabel 的 label 会被忽略
+		if _, ok := remove[v]; ok {
 			continue
 		}
-		// 不在 flow.CurrentLabel 的 label 会添加至新列表
+		// 不在 flow.RemoveLabel 中的 label 会添加至新列表
 		labels = append(labels, v)
 	}
 	req.Labels = &labels

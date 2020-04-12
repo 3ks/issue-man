@@ -20,6 +20,8 @@ flows:
       - "member"
     current_label:
       - "status/pending"
+    remove_label:
+      - "status/pending"
     target_label:
       - "status/waiting-for-pr"
     success_feedback: "Thank you @somebody, this issue had been assigned to you."
@@ -30,7 +32,7 @@ flows:
     target_position: "top"
     jobs:
     - name: "warn"
-      in: 14 # day
+      in: 14 # 天数，对于想要预先填充，但不生效的 job，可以将该值置为负数
       labels: # 在该状态停留超过一定时间，则提醒
         - "status/waiting-for-pr"
       target_label:  # 添加该 label
@@ -57,8 +59,12 @@ flows:
     permission:
       - "maintainers"
       - "self"
+    # TODO 分为要求 label 和操作 label
     current_label:
       - "status/waiting-for-pr"
+    remove_label:
+      - "status/waiting-for-pr"
+      - "status/stale"
     target_label:
       - "status/reviewing"
 
@@ -68,6 +74,8 @@ flows:
       - "maintainers"
       - "self"
     current_label:
+      - "status/reviewing"
+    remove_label:
       - "status/reviewing"
     target_label:
       - "status/merged"

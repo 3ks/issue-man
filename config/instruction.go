@@ -36,10 +36,12 @@ type Flow struct {
 	Mention string `mapstructure:"mention"`
 
 	// 当前阶段 label
-	// 一般进入下一阶段的状态后，会移除这些 label
-	// 并且，如果当前 issue 不包含这些 label，则表示当前 issue 不满足当前条件，终止操作。
+	// 如果 issue 当前不包含这些 label，则表示当前 issue 不满足当前条件，终止操作。
 	// 如果列表为空，则表示该指令不涉及移除 label
 	CurrentLabel []string `mapstructure:"current_label"`
+
+	// 一般进入下一阶段的状态后，会移除这些 label
+	RemoveLabel []string `mapstructure:"remove_label"`
 
 	// 目标状态 label
 	// 一般进入下一阶段的状态后，会添加这些 label

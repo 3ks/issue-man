@@ -18,6 +18,10 @@ func job(conf config.Config) {
 	Jobs = make([]config.Job, 0)
 	for _, v := range config.Instructions {
 		for _, job := range v.Jobs {
+			// 小于 0 的会被忽略掉
+			if job.In < 0 {
+				continue
+			}
 			Jobs = append(Jobs, job)
 		}
 	}

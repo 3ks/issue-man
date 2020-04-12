@@ -55,7 +55,7 @@ func CardMove(info Info, flow config.Flow) {
 				fmt.Printf("move card fail. err: %v\n", err.Error())
 				return
 			}
-			if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode != http.StatusCreated {
 				fmt.Printf("move card maybe fail. status code: %v\n", resp.StatusCode)
 				return
 			}

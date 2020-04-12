@@ -65,7 +65,7 @@ func Job(fullName string, job config.Job) {
 
 		// 需要做点啥，满足条件的，执行操作
 		// 拼装一个 info 和 flow，直接调用函数
-		info, flow := assemblyData(*v, job)
+		info, flow := assemblyData(*v, job, fullName)
 		fmt.Printf("assembly data. info: %#v, flow: %#v\n", info, flow)
 
 		// 发送 Update Issue 请求（如果有的话）
@@ -77,9 +77,9 @@ func Job(fullName string, job config.Job) {
 }
 
 // 为 job 拼装一个 info 和 flow
-func assemblyData(issue gg.Issue, job config.Job) (info Info, flow config.Flow) {
+func assemblyData(issue gg.Issue, job config.Job, fullName string) (info Info, flow config.Flow) {
 	// info
-	ss := strings.SplitN(*issue.Repository.FullName, "/", -1)
+	ss := strings.SplitN(fullName, "/", -1)
 	info.Owner = ss[0]
 	info.Repository = ss[1]
 
@@ -114,7 +114,7 @@ func assemblyData(issue gg.Issue, job config.Job) (info Info, flow config.Flow) 
 
 	// flow
 	flow.Close = false
-	flow.CurrentLabel = job.RemoveLabels
+	flow.RemoveLabel = job.RemoveLabels
 	flow.TargetLabel = job.TargetLabels
 	flow.SuccessFeedback = job.Feedback
 	flow.CurrentColumnID = job.CurrentColumnID
@@ -144,7 +144,8 @@ func judgeState(owner, repository string, issueNumber int, labels []string, in i
 			// todo 暂时视作仅一个 label
 			if *es[i].Label.Name == labels[0] {
 				// 判断持续时间
-				if time.Now().Sub(*es[i].CreatedAt).Milliseconds() > ((int64(time.Hour) * 24 * in) / 1000) {
+
+				if time.Now().Sub(*es[i].CreatedAt).Milliseconds() > ((int64(time.Hour) * 24 * in) / 1000 / 1000) {
 					// 需要做点什么
 					fmt.Printf("need do something\n")
 					return true, nil

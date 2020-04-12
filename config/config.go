@@ -11,8 +11,10 @@ type Config struct {
 	Maintainers []string `mapstructure:"maintainers"`
 
 	// Job 配置
+	// 检测时间
 	DetectionAt string `mapstructure:"detection_at"`
-	SkipWeekend bool   `mapstructure:"skip_weekend"`
+	// 周末放个假
+	SkipWeekend bool `mapstructure:"skip_weekend"`
 
 	// 通过配置文件定义任务流程
 	Flows []Flow `mapstructure:"flows"`
