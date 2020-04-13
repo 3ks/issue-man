@@ -39,10 +39,6 @@ flows:
     current_label:
       - "status/stale"
     job_name: "reset"
-    # status/stale 状态的限制时间，在最后一次发送该指令的时间的基础上，延长的 extend 天数。
-    # 例如：extend 是 7 天，4 月 13 日 进入 status/stale 状态，该状态的限制时间为 14 天，则该 issue 会在 4 月 27 日被
-    # 重置。如果用户在 4 月 15 日发送 /delay-reset 指令，则表示延长至 4 月 22 日，由于这个日期早于预期重置日期，则
-    # 不生效，检测时会以 4 月 27 日为准。如果用户在 4 月 26 日发送 /delay-reset 指令，则表示延长至 5 月 3 日，此时会生效，检测时会以 5 月 3 日为准。
     delay: 7
     success_feedback: "@somebody, The reset date for this issue has been delay to @reset-date. Before the issue is reset, you can repeat enter `/delay-reset` to continue delaying the reset date."
   # /pushed 指令
@@ -100,14 +96,9 @@ jobs:
     target_label:  # 添加该 label
       - "status/stale"
     assignees_policy: "@keep_all"
-    # 提醒日期可能会被延长，但最终时期可以计算，提醒策略不变。
-    # 先获取进入该状态的日期、当前日期、重置日期。
-    # 重置日期 - 进入该状态的日期，得到的天数，基于倒数天数，每次翻倍的规律进行重复提醒。
-    # 例如：一个共计 14 天后会被重置的任务，除首次提醒外，会在倒数第 1、2、4、8 天进行提醒。
     feedback: "@somebody, The Issue will be reset after @reset-date, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
   - name: "reset"
     in: 14
-    # 该指令可以延长重置日期
     instruct_name: "/delay-reset"
     labels: # 在该状态停留超过一定时间，则释放 issue
       - "status/stale"
@@ -121,7 +112,7 @@ jobs:
     target_column_id: 9001
     target_position: "top"
     warn_feedback: "@somebody, The Issue will be reset after @reset-date, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
-    feedback: "Everyone can accept the issue now."
+    feedback: "Everyone can accept this issue now."
 port: ":8080"
 log_dir: "./log/"
 log_file: "hook.log"

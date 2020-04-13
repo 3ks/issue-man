@@ -25,6 +25,6 @@ type Comment struct {
 func (r Comment) HandComment(text string) string {
 	text = strings.ReplaceAll(text, Somebody, fmt.Sprintf("@%s", r.Login))
 	text = strings.ReplaceAll(text, Count, strconv.Itoa(r.Count))
-	text = strings.ReplaceAll(text, ResetDate, ResetDate)
+	text = strings.ReplaceAll(text, ResetDate, fmt.Sprintf("`%s`", r.ResetDate))
 	return text
 }

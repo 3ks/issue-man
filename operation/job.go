@@ -61,10 +61,10 @@ func Job(fullName string, job config.Job) {
 			if len(v.Assignees) > 0 {
 				assign = *v.Assignees[0].Login
 			}
-			undo := config.Jobs["undo"]
+			reset := config.Jobs["reset"]
 			hc := Comment{}
 			hc.Login = assign
-			hc.ResetDate = time.Now().AddDate(0, 0, int(undo.In)).Format("2006-01-02")
+			hc.ResetDate = time.Now().AddDate(0, 0, int(reset.In)).In(time.Local).Format("2006-01-02")
 
 			// 清楚 comment，下面手动调用 comment
 			flow.SuccessFeedback = ""
@@ -72,10 +72,10 @@ func Job(fullName string, job config.Job) {
 			IssueEdit(info, flow)
 
 			// comment 提示
-			IssueComment(info, hc.HandComment(job.WarnFeedback))
+			IssueComment(info, hc.HandComment(job.Feedback))
 		} else {
 
-			// undo 重置/告警
+			// reset 重置/告警
 
 			// 计算最终重置时间
 			// 如果符合重置条件，则重置，并 continue
@@ -87,9 +87,10 @@ func Job(fullName string, job config.Job) {
 				fmt.Printf("get and judge issue event failed. err: %v\n", err.Error())
 				continue
 			}
+			resetDate = resetDate.In(time.Local)
 
-			// 重置
-			if time.Now().Sub(resetDate) < 0 {
+			// 当前时间大于重置时间，则应该重置
+			if time.Now().Sub(resetDate) > 0 {
 				// 需要做点啥，满足条件的，执行操作
 				// 拼装一个 info 和 flow，直接调用函数
 				info, flow := assemblyData(*v, job, fullName)
@@ -117,7 +118,7 @@ func Job(fullName string, job config.Job) {
 // 每天最多提醒一次
 func remind(owner, repository string, issueNumber int, login, instructName, warn string, resetDate time.Time) {
 	// 计算今天是否需要提醒
-	hour := resetDate.Sub(time.Now()).Hours()
+	hour := resetDate.In(time.Local).Sub(time.Now()).Hours()
 	day := 1
 	need := false
 	fmt.Printf("last %v hour.\n", hour)
@@ -138,25 +139,26 @@ func remind(owner, repository string, issueNumber int, login, instructName, warn
 	// 根据 `/delay-reset` 及 comment 时间判断今天是否已经提醒过了
 	remindAt, err := LastRemindAt(owner, repository, issueNumber, instructName)
 	if err != nil {
-		fmt.Printf("get last remind time fail. err: %v\n", err.Error())
-		return
+		fmt.Printf("it's ok. get last remind time fail. err: %v\n", err.Error())
 	}
-	// 存在，且不是在今天提示的，则提示
+	// 存在，且在今天提示过，则不再重复提示
 	if remindAt != nil {
 		now := time.Now()
 		// 今天已提醒过
 		// todo 测试时可注释掉
 		if now.Year() == remindAt.Year() && now.Month() == remindAt.Month() && now.Day() == remindAt.Day() {
+			fmt.Printf("already remind today. date: %v\n", remindAt.String())
 			return
 		}
 	}
+	// 其它情况（未提示过，或者提示过，但不是在今天），则提示
 	info := Info{
 		Owner:       owner,
 		Repository:  repository,
 		IssueNumber: issueNumber,
 	}
 	hc := Comment{}
-	hc.ResetDate = resetDate.Format("2006-01-02")
+	hc.ResetDate = resetDate.In(time.Local).Format("2006-01-02")
 	hc.Login = login
 	IssueComment(info, hc.HandComment(warn))
 }
@@ -225,12 +227,12 @@ func LastDelayAt(owner, repository string, issueNumber, delay int, instructName 
 	}
 
 	for i := len(comments) - 1; i >= 0; i-- {
-		// 仅指令
-		if strings.Trim(*comments[i].Body, " ") == instructName {
+		// 以指令开头
+		if strings.HasPrefix(*comments[i].Body, instructName) {
 			return comments[i].CreatedAt.AddDate(0, 0, delay), nil
 		}
 	}
-	return commentAt, fmt.Errorf("not found instruct: %v in issue: %v\n", instructName, issueNumber)
+	return commentAt, fmt.Errorf("last delay at. not found instruct: %v in issue: %v\n", instructName, issueNumber)
 }
 
 // 获取最后一次提醒的时间
@@ -246,14 +248,15 @@ func LastRemindAt(owner, repository string, issueNumber int, instructName string
 	for i := len(comments) - 1; i >= 0; i-- {
 		// todo 怎么识别提示
 		if strings.Contains(*comments[i].Body, "will be reset") {
-			return comments[i].CreatedAt, nil
+			tmp := comments[i].CreatedAt.In(time.Local)
+			return &tmp, nil
 			// 不是单纯的指令，还包含提示字符，视为一次提醒
 			//if len(*comments[i].Body) > len(instructName) {
 			//	return comments[i].CreatedAt, nil
 			//}
 		}
 	}
-	return nil, fmt.Errorf("not found instruct: %v in issue: %v\n", instructName, issueNumber)
+	return nil, fmt.Errorf("last remind at. not found instruct: %v in issue: %v\n", instructName, issueNumber)
 }
 
 func getLabelCreateAt(owner, repository string, issueNumber int, labels []string) (createdAt *time.Time, err error) {
@@ -273,7 +276,8 @@ func getLabelCreateAt(owner, repository string, issueNumber int, labels []string
 			// 找到对应操作的 event
 			// todo 暂时视作仅一个 label
 			if *es[i].Label.Name == labels[0] {
-				return es[i].CreatedAt, nil
+				tmp := es[i].CreatedAt.In(time.Local)
+				return &tmp, nil
 			}
 		}
 	}

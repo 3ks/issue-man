@@ -7,6 +7,7 @@ import (
 	"issue-man/client"
 	"issue-man/config"
 	"net/http"
+	"time"
 )
 
 const (
@@ -54,13 +55,18 @@ func IssueEdit(info Info, flow config.Flow) {
 	if flow.SuccessFeedback != "" {
 		hc := Comment{}
 		hc.Login = info.Login
-		// 这可能是一个修改过期时间的指令
-		//if flow.Delay != 0 && flow.JobName != "" {
-		//	if job, ok := config.Jobs[flow.JobName]; ok {
-		//		hc.ResetDate = getResetDate(info.Owner, info.Repository, info.IssueNumber, info.Labels, job.In, flow.Delay)
-		//	}
-		//}
-		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
+		// 这可能是一个修改重置时间的指令
+		if flow.JobName == "reset" {
+			if job, ok := config.Jobs[flow.JobName]; ok {
+				resetDate, err := getResetDate(info.Owner, info.Repository, info.IssueNumber, flow.CurrentLabel, int(job.In), int(flow.Delay), flow.Name)
+				if err != nil {
+					fmt.Printf("get reset date for instruct failed. instruct: %v, err: %v\n", flow.Name, err.Error())
+					return
+				}
+				hc.ResetDate = resetDate.In(time.Local).Format("2006-01-02")
+			}
+		}
+		IssueComment(info, hc.HandComment(flow.SuccessFeedback))
 	}
 }
 
