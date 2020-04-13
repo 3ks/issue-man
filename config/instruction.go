@@ -104,4 +104,11 @@ type Flow struct {
 
 	// 移动 card 后的文字提示，为空则不提示，默认为空
 	ColumnFeedback string `mapstructure:"column_feedback"`
+
+	// 对应的 job 名
+	// 用于找到 job map 中对应的任务，然后获取其重置时间，最终根据 delay 计算过期时间
+	JobName string `mapstructure:"job_name"`
+
+	// 推迟天数
+	Delay int64 `mapstructure:"delay"`
 }

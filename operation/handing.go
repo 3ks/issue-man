@@ -43,7 +43,9 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 		if flow.PermissionFeedback == "" {
 			return
 		}
-		IssueComment(info, HandComment(flow.PermissionFeedback, info.Login, 0))
+		hc := Comment{}
+		hc.Login = info.Login
+		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
 		return
 	}
 
@@ -53,7 +55,9 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 		if flow.FailFeedback == "" {
 			return
 		}
-		IssueComment(info, HandComment(flow.FailFeedback, info.Login, 0))
+		hc := Comment{}
+		hc.Login = info.Login
+		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
 		return
 	}
 
@@ -63,7 +67,10 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 		if flow.LimitFeedback == "" {
 			return
 		}
-		IssueComment(info, HandComment(flow.LimitFeedback, info.Login, flow.TargetLimit))
+		hc := Comment{}
+		hc.Login = info.Login
+		hc.Count = flow.TargetLimit
+		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
 		return
 	}
 

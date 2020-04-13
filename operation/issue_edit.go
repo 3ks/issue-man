@@ -7,7 +7,6 @@ import (
 	"issue-man/client"
 	"issue-man/config"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -53,8 +52,15 @@ func IssueEdit(info Info, flow config.Flow) {
 
 	// 创建文本提示
 	if flow.SuccessFeedback != "" {
-		commentBody := strings.ReplaceAll(flow.SuccessFeedback, "@somebody", fmt.Sprintf("@%s", info.Login))
-		IssueComment(info, commentBody)
+		hc := Comment{}
+		hc.Login = info.Login
+		// 这可能是一个修改过期时间的指令
+		if flow.Delay != 0 && flow.JobName != "" {
+			if job, ok := config.Jobs[flow.JobName]; ok {
+				hc.ResetDate = getResetDate(info.Owner, info.Repository, info.IssueNumber, info.Labels, job.In, flow.Delay)
+			}
+		}
+		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
 	}
 }
 

@@ -37,6 +37,7 @@ type Config struct {
 type Job struct {
 	Name            string   `mapstructure:"name"`
 	In              int64    `mapstructure:"in"`
+	InstructName    string   `mapstructure:"instruct_name"`
 	Labels          []string `mapstructure:"labels"`
 	RemoveLabels    []string `mapstructure:"remove_labels"`
 	TargetLabels    []string `mapstructure:"target_label"`

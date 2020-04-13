@@ -52,7 +52,7 @@ func Job(fullName string, job config.Job) {
 		}
 
 		// 获取 events，判断状态持续时间。（以打上 label 的时间为准）
-		needDoSomething, err := judgeState(ss[0], ss[1], *v.Number, job.Labels, job.In)
+		needDoSomething, err := judgeState(ss[0], ss[1], job.InstructName, *v.Number, job.Labels, job.In)
 		if err != nil {
 			fmt.Printf("get and judge issue event failed. err: %v\n", err.Error())
 			continue
@@ -126,15 +126,74 @@ const (
 	Labeled = "labeled"
 )
 
-func judgeState(owner, repository string, issueNumber int, labels []string, in int64) (needDoSomething bool, err error) {
+func judgeState(owner, repository, instructName string, issueNumber int, labels []string, in int64) (needDoSomething bool, err error) {
+	createdAt, err := getLabelCreateAt(owner, repository, issueNumber, labels)
+	if err != nil {
+		return false, err
+	}
+	//if time.Now().Sub(*createdAt).Milliseconds() > ((int64(time.Hour) * 24 * in) / 1000 / 1000) {
+	if time.Now().Sub(createdAt.AddDate(0, 0, int(in))) > 0 {
+		// 再查询是否有延迟的指令
+		if ins, ok := config.Instructions[instructName]; !ok {
+			// 没有相关的延迟指令
+			// 可能需要做点什么
+			fmt.Printf("need do something\n")
+			return true, nil
+		} else {
+			// 有相关的延迟指令，则判断指令的时间
+			// 获取最后执行该指令的时间
+			commentAt, err := LastDelayAt(owner, repository, issueNumber, instructName)
+			// 没有执行过相关指令，且现在的时间已经大于预期时间，则返回 true
+			if err != nil {
+				fmt.Printf("can not found comment, err: %v", err.Error())
+				fmt.Printf("need do something\n")
+				return true, nil
+			}
+			// 执行过相关指令，且找到了，且期望的时间已经过了，则需要做点什么
+			if time.Now().Sub(commentAt.AddDate(0, 0, int(ins.Delay))) > 0 {
+				fmt.Printf("need do something\n")
+				return true, nil
+			} else {
+				// 执行过相关指令，且找到了，且期望的时间还没过，则不需要做什么
+				fmt.Printf("nothing to do\n")
+				return false, nil
+			}
+		}
+	}
+	// 时辰未到
+	fmt.Printf("nothing to do\n")
+	return false, nil
+}
+
+// 查询 issue comment，看是否有 `/delay-reset` 指令。
+// 如果有，则根据最终一次 comment 的时间，加上 delay 的天数，得出一个重置日期
+// 计算当前时间是否大于期望的重置七日
+func LastDelayAt(owner, repository string, issueNumber int, instructName string) (commentAt *time.Time, err error) {
+	comments, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get list comments failed. status code: %v\n", resp.StatusCode)
+	}
+
+	for i := len(comments) - 1; i >= 0; i-- {
+		if strings.Contains(*comments[i].Body, instructName) {
+			return comments[i].CreatedAt, nil
+		}
+	}
+	return nil, fmt.Errorf("not found instruct: %v in issue: %v\n", instructName, issueNumber)
+}
+
+func getLabelCreateAt(owner, repository string, issueNumber int, labels []string) (createdAt *time.Time, err error) {
 	es, resp, err := client.Get().Issues.ListIssueEvents(context.TODO(), owner, repository, issueNumber, nil)
 	if err != nil {
 		fmt.Printf("get list events by issue fail. err: %v\n", err.Error())
-		return false, err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
-		return false, fmt.Errorf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
+		return nil, fmt.Errorf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
 	}
 
 	for i := len(es) - 1; i >= 0; i-- {
@@ -143,20 +202,11 @@ func judgeState(owner, repository string, issueNumber int, labels []string, in i
 			// 找到对应操作的 event
 			// todo 暂时视作仅一个 label
 			if *es[i].Label.Name == labels[0] {
-				// 判断持续时间
-				if time.Now().Sub(*es[i].CreatedAt).Milliseconds() > ((int64(time.Hour) * 24 * in) / 1000 / 1000) {
-					// 需要做点什么
-					fmt.Printf("need do something\n")
-					return true, nil
-				} else {
-					// 时辰未到
-					fmt.Printf("nothing to do\n")
-					return false, nil
-				}
+				return es[i].CreatedAt, nil
 			}
 		}
 	}
-	return false, nil
+	return nil, fmt.Errorf("not found this state")
 }
 
 func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, err error) {

@@ -44,7 +44,7 @@ flows:
     # 重置。如果用户在 4 月 15 日发送 /delay-reset 指令，则表示延长至 4 月 22 日，由于这个日期早于预期重置日期，则
     # 不生效，检测时会以 4 月 27 日为准。如果用户在 4 月 26 日发送 /delay-reset 指令，则表示延长至 5 月 3 日，此时会生效，检测时会以 5 月 3 日为准。
     delay: 7
-    feedback: "@somebody, The reset date for this issue has been delay to @delayed-time. Before the issue is reset, you can repeat enter `/delay-reset` to continue delaying the reset date."
+    success_feedback: "@somebody, The reset date for this issue has been delay to @reset-date. Before the issue is reset, you can repeat enter `/delay-reset` to continue delaying the reset date."
   # /pushed 指令
   - name: "/pushed"
     permission:
@@ -107,6 +107,8 @@ jobs:
     feedback: "@somebody, The Issue will be reset after @expected-time, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
   - name: "reset"
     in: 14
+    # 该指令可以延长重置日期
+    instruct_name: "/delay-reset"
     labels: # 在该状态停留超过一定时间，则释放 issue
       - "status/stale"
     remove_labels: # 移除该 label
