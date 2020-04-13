@@ -45,5 +45,6 @@ type Job struct {
 	CurrentColumnID int64    `mapstructure:"current_column_id"`
 	TargetColumnID  int64    `mapstructure:"target_column_id"`
 	TargetPosition  string   `mapstructure:"target_position"`
+	WarnFeedback    string   `mapstructure:"warn_feedback"`
 	Feedback        string   `mapstructure:"feedback"`
 }

@@ -104,7 +104,7 @@ jobs:
     # 先获取进入该状态的日期、当前日期、重置日期。
     # 重置日期 - 进入该状态的日期，得到的天数，基于倒数天数，每次翻倍的规律进行重复提醒。
     # 例如：一个共计 14 天后会被重置的任务，除首次提醒外，会在倒数第 1、2、4、8 天进行提醒。
-    feedback: "@somebody, The Issue will be reset after @expected-time, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
+    feedback: "@somebody, The Issue will be reset after @reset-date, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
   - name: "reset"
     in: 14
     # 该指令可以延长重置日期
@@ -120,6 +120,7 @@ jobs:
     current_column_id: 9002 # Project 恢复到原来的 column
     target_column_id: 9001
     target_position: "top"
+    warn_feedback: "@somebody, The Issue will be reset after @reset-date, please complete the Issue as soon as possible, you can also enter `/delay-reset` to delay the reset time."
     feedback: "Everyone can accept the issue now."
 port: ":8080"
 log_dir: "./log/"

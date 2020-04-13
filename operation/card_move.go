@@ -7,7 +7,6 @@ import (
 	"issue-man/client"
 	"issue-man/config"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -60,7 +59,9 @@ func CardMove(info Info, flow config.Flow) {
 				return
 			}
 			if flow.ColumnFeedback != "" {
-				IssueComment(info, strings.ReplaceAll(flow.ColumnFeedback, "@somebody", fmt.Sprintf("@%s", info.Login)))
+				hc := Comment{}
+				hc.Login = info.Login
+				IssueComment(info, hc.HandComment(flow.ColumnFeedback))
 			}
 			break
 		}

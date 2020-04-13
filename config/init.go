@@ -23,8 +23,9 @@ func Init() {
 		panic("viper get config fail")
 	}
 
-	Instructions = make(map[string]Flow)
 	Maintainers = make(map[string]bool)
+	Jobs = make(map[string]Job)
+	Instructions = make(map[string]Flow)
 
 	// maintain map
 	for _, v := range conf.Maintainers {
