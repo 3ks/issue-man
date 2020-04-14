@@ -60,15 +60,16 @@ func Job(fullName string, job config.Job) {
 			createdAt, err := getLabelCreateAt(ss[0], ss[1], *v.Number, job.Labels)
 			if err != nil {
 				fmt.Printf("get label create at failed. label: %v, err: %v\n", job.Labels, err.Error())
-				return
+				continue
 			}
 			// 预期打上 stale 的时间
 			exceptedTime := createdAt.AddDate(0, 0, int(job.In))
 
+			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will not label: %v\n", createdAt.String(), exceptedTime.String(), time.Now().Sub(exceptedTime) < 0)
 			// 暂不添加 stale 标签，下次一定
-			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will label: %v\n", createdAt.String(), exceptedTime.String(), time.Now().Sub(exceptedTime) > 0)
-			if time.Now().Sub(exceptedTime) > 0 {
-				return
+			// 当前时间 < 应该打上 stale 的时间，则下次一定
+			if time.Now().Sub(exceptedTime) < 0 {
+				continue
 			}
 
 			// 由于此时还没有 stale 标签，所以，重置时间是当前时间 + reset 的时间
