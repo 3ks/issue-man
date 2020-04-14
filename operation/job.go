@@ -53,8 +53,20 @@ func Job(fullName string, job config.Job) {
 		}
 
 		// 告警
-		// 处于 waiting-for-pr 状态 in 天后，计算预期重置时间，并提示，并添加 stale。
 		if job.Name == "warn" {
+			// 处于 waiting-for-pr 状态 in 天后，计算预期重置时间，并提示，并添加 stale。
+			// 判断进入该状态的时长
+			createdAt, err := getLabelCreateAt(ss[0], ss[1], *v.Number, job.Labels)
+			if err != nil {
+				fmt.Printf("get label create at failed. label: %v, err: %v\n", job.Labels, err.Error())
+				return
+			}
+
+			// 暂不添加 stale 标签，下次一定
+			if time.Now().Sub(createdAt.AddDate(0, 0, int(job.In))) > 0 {
+				return
+			}
+
 			// 由于此时还没有 stale 标签，所以，重置时间是当前时间 + undo 的时间
 			info, flow := assemblyData(*v, job, fullName)
 			assign := ""
