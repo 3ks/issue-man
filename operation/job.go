@@ -18,7 +18,8 @@ import (
 // 判断状态、时间。已经处于该状态的则忽略（todo 或其它策略）
 // 拼装 Flow 格式的对象，调用相关方法，更新 issue 或 card
 func Job(fullName string, job config.Job) {
-	fmt.Printf("do job: %#v\n", job)
+	fmt.Printf("====================\ndo job: %s\n", job.Name)
+	defer fmt.Printf("====================\nfinished job: %s\n", job.Name)
 	ss := strings.SplitN(fullName, "/", -1)
 	if len(ss) != 2 {
 		fmt.Printf("unknown repository: %s\n", fullName)
@@ -61,13 +62,16 @@ func Job(fullName string, job config.Job) {
 				fmt.Printf("get label create at failed. label: %v, err: %v\n", job.Labels, err.Error())
 				return
 			}
+			// 预期打上 stale 的时间
+			exceptedTime := createdAt.AddDate(0, 0, int(job.In))
 
 			// 暂不添加 stale 标签，下次一定
-			if time.Now().Sub(createdAt.AddDate(0, 0, int(job.In))) > 0 {
+			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will label: %v\n", createdAt.String(), exceptedTime.String(), time.Now().Sub(exceptedTime) > 0)
+			if time.Now().Sub(exceptedTime) > 0 {
 				return
 			}
 
-			// 由于此时还没有 stale 标签，所以，重置时间是当前时间 + undo 的时间
+			// 由于此时还没有 stale 标签，所以，重置时间是当前时间 + reset 的时间
 			info, flow := assemblyData(*v, job, fullName)
 			assign := ""
 			if len(v.Assignees) > 0 {
@@ -82,7 +86,7 @@ func Job(fullName string, job config.Job) {
 			flow.SuccessFeedback = ""
 			// 添加标签，后续根据标签和延长指令来计算重置时间
 			IssueEdit(info, flow)
-
+			fmt.Printf("warn comment issue number: %v, body: %v\n", info.IssueNumber, hc.HandComment(job.Feedback))
 			// comment 提示
 			IssueComment(info, hc.HandComment(job.Feedback))
 		} else {
@@ -172,6 +176,7 @@ func remind(owner, repository string, issueNumber int, login, instructName, warn
 	hc := Comment{}
 	hc.ResetDate = resetDate.In(time.Local).Format("2006-01-02")
 	hc.Login = login
+	fmt.Printf("reset comment issue number: %v, body: %v\n", info.IssueNumber, hc.HandComment(warn))
 	IssueComment(info, hc.HandComment(warn))
 }
 
