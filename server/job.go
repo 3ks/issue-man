@@ -55,7 +55,8 @@ func job(conf config.Config) {
 			}
 		}
 		// 等待明天的这个时刻
-		s = t.AddDate(0, 0, 1).Sub(time.Now())
+		t = t.AddDate(0, 0, 1)
+		s = t.Sub(time.Now())
 		fmt.Printf("waiting for to detection. time: %v\n", s.String())
 		time.Sleep(s)
 	}
