@@ -302,19 +302,38 @@ func getLabelCreateAt(owner, repository string, issueNumber int, labels []string
 	return nil, fmt.Errorf("not found this state")
 }
 
+// 获取全部（10000 条以内）满足条件的 issue
 func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, err error) {
+	issues = make([]*gg.Issue, 0)
+
 	// 根据 label 筛选
 	req := &gg.IssueListByRepoOptions{}
 	req.Labels = labels
+	req.PerPage = 100
 
-	is, resp, err := client.Get().Issues.ListByRepo(context.TODO(), owner, repository, req)
-	if err != nil {
-		fmt.Printf("get list issue by repo fail. err: %v\n", err.Error())
-		return
+	for i := 1; i < 100; i++ {
+		// 页数
+		req.Page = i
+		is, resp, err := client.Get().Issues.ListByRepo(context.TODO(), owner, repository, req)
+		if err != nil {
+			fmt.Printf("get list issue by repo fail. err: %v\n", err.Error())
+			break
+		}
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
+			break
+		}
+
+		// 无记录，终止
+		if len(is) == 0 {
+			break
+		}
+		issues = append(issues, is...)
+		// 应该没有下一页了
+		if len(is) < req.PerPage {
+			break
+		}
 	}
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
-		return
-	}
-	return is, err
+
+	return issues, err
 }
