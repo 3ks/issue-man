@@ -232,16 +232,31 @@ const (
 	Labeled = "labeled"
 )
 
+// 获取某个 issue 的 comment 列表
 // 查询 issue comment，看是否有 `/delay-reset` 指令。
-// 如果有，则根据最终一次 comment 的时间，加上 delay 的天数，得出一个重置日期
-// 计算当前时间是否大于期望的重置七日
+// 如果有，则根据最终一次 comment 的时间，加上 delay 的天数，得出并返回一个重置日期
 func LastDelayAt(owner, repository string, issueNumber, delay int, instructName string) (commentAt time.Time, err error) {
-	comments, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, nil)
-	if err != nil {
-		return commentAt, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return commentAt, fmt.Errorf("get list comments failed. status code: %v\n", resp.StatusCode)
+	comments := make([]*gg.IssueComment, 0)
+	req := &gg.IssueListCommentsOptions{}
+	req.PerPage = 100
+
+	for i := 1; i <= 100; i++ {
+		cs, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
+		if err != nil {
+			return commentAt, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return commentAt, fmt.Errorf("get list comments failed. status code: %v\n", resp.StatusCode)
+		}
+		// 无记录，终止
+		if len(cs) == 0 {
+			break
+		}
+		comments = append(comments, cs...)
+		// 应该没有下一页了
+		if len(cs) < req.PerPage {
+			break
+		}
 	}
 
 	for i := len(comments) - 1; i >= 0; i-- {
@@ -253,14 +268,30 @@ func LastDelayAt(owner, repository string, issueNumber, delay int, instructName 
 	return commentAt, fmt.Errorf("last delay at. not found instruct: %v in issue: %v\n", instructName, issueNumber)
 }
 
-// 获取最后一次提醒的时间
+// 获取某个 issue 的 comment 列表
+// 并判断最后一次提醒的时间
 func LastRemindAt(owner, repository string, issueNumber int, instructName string) (commentAt *time.Time, err error) {
-	comments, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, nil)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get list comments failed. status code: %v\n", resp.StatusCode)
+	comments := make([]*gg.IssueComment, 0)
+	req := &gg.IssueListCommentsOptions{}
+	req.PerPage = 100
+
+	for i := 1; i <= 100; i++ {
+		cs, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("get list comments failed. status code: %v\n", resp.StatusCode)
+		}
+		// 无记录，终止
+		if len(cs) == 0 {
+			break
+		}
+		comments = append(comments, cs...)
+		// 应该没有下一页了
+		if len(cs) < req.PerPage {
+			break
+		}
 	}
 
 	for i := len(comments) - 1; i >= 0; i-- {
@@ -277,24 +308,57 @@ func LastRemindAt(owner, repository string, issueNumber int, instructName string
 	return nil, fmt.Errorf("last remind at. not found instruct: %v in issue: %v\n", instructName, issueNumber)
 }
 
+// 获取某个 issue 的 event 列表
+// 并判断某些 label 的创建时间
 func getLabelCreateAt(owner, repository string, issueNumber int, labels []string) (createdAt *time.Time, err error) {
-	es, resp, err := client.Get().Issues.ListIssueEvents(context.TODO(), owner, repository, issueNumber, nil)
+	// 会先判断 issue 目前是否含有期望的 label
+	ls, _, err := client.Get().Issues.Get(context.TODO(), owner, repository, issueNumber)
 	if err != nil {
-		fmt.Printf("get list events by issue fail. err: %v\n", err.Error())
+		fmt.Printf("get issue by issue_number fail. err: %v\n", err.Error())
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
-		return nil, fmt.Errorf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
+	lsm := make(map[string]bool)
+	for _, v := range ls.Labels {
+		lsm[*v.Name] = true
+	}
+	// 没有期望的 label，则不再查询 events
+	if _, ok := lsm[labels[0]]; !ok {
+		return nil, fmt.Errorf("labels not exist now,nothing to do")
 	}
 
-	for i := len(es) - 1; i >= 0; i-- {
+	events := make([]*gg.IssueEvent, 0)
+	req := &gg.ListOptions{}
+	req.PerPage = 100
+
+	for i := 1; i <= 100; i++ {
+		req.Page = i
+		es, resp, err := client.Get().Issues.ListIssueEvents(context.TODO(), owner, repository, issueNumber, req)
+		if err != nil {
+			fmt.Printf("get list events by issue fail. err: %v\n", err.Error())
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
+			return nil, fmt.Errorf("list issue by repo maybe fail. status code: %v\n", resp.StatusCode)
+		}
+		// 无记录，终止
+		if len(es) == 0 {
+			break
+		}
+		events = append(events, es...)
+		// 应该没有下一页了
+		if len(es) < req.PerPage {
+			break
+		}
+	}
+
+	for i := len(events) - 1; i >= 0; i-- {
 		// 打 label 操作
-		if *es[i].Event == Labeled {
+		if *events[i].Event == Labeled {
 			// 找到对应操作的 event
 			// todo 暂时视作仅一个 label
-			if *es[i].Label.Name == labels[0] {
-				tmp := es[i].CreatedAt.In(time.Local)
+			if *events[i].Label.Name == labels[0] {
+				tmp := events[i].CreatedAt.In(time.Local)
 				return &tmp, nil
 			}
 		}
@@ -302,6 +366,7 @@ func getLabelCreateAt(owner, repository string, issueNumber int, labels []string
 	return nil, fmt.Errorf("not found this state")
 }
 
+// 获取 issue 列表
 // 获取全部（10000 条以内）满足条件的 issue
 func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, err error) {
 	issues = make([]*gg.Issue, 0)
