@@ -1,19 +1,19 @@
-apiVersion: v1
-kind: Repository
+apiVersion: "v1"
+kind: "Repository"
 metadata:
   name: "gorda.io"
 spec:
   selector:
     owner: "gorda"
     repository: "gorda.io"
-  maintainer:
+  token: "xxx"
+  maintainers:
     - "aaa"
     - "bbb"
     - "ccc"
-  token: "xxx"
 ---
-apiVersion: v1
-kind: Issue
+apiVersion: "v1"
+kind: "IssueCreate"
 metadata:
   name: "issue-create"
 spec:
@@ -29,8 +29,8 @@ spec:
   - "noone"
   milestone: 1
 ---
-apiVersion: v1
-kind: IssueComment
+apiVersion: "v1"
+kind: "IssueComment"
 metadata:
   name: "gorda.io-issue-confirm"
 spec:
@@ -48,8 +48,8 @@ spec:
     labels:
     - "status/welcome"
 ---
-apiVersion: v1
-kind: IssueComment
+apiVersion: "v1"
+kind: "IssueComment"
 metadata:
   name: "gorda.io-issue-accept"
 spec:
@@ -82,14 +82,14 @@ spec:
       id: 9527
       column: 10010
 ---
-apiVersion: v1
-kind: Job
+apiVersion: "v1"
+kind: "Job"
 metadata:
   name: "gorda.io-issue-undo"
 spec:
   selector:
     owner: "gorda"
-  repository: "gorda.io"
+    repository: "gorda.io"
   labels:  # 添加该 label
     - "status/pending"
   remove_labels: # 移除该 label
@@ -105,9 +105,10 @@ spec:
     in: 14
     labels: # 在该状态停留超过一定时间，则释放 issue
       - "status/stale"
+# TODO 自动扫描更新 Job
 ---
-apiVersion: v1
-kind: PullRequest
+apiVersion: "v1"
+kind: "PullRequest"
 metadata:
   name: "gorda.io-issue-accept"
 spec:

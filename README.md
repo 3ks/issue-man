@@ -59,3 +59,53 @@ flows:
 - 解析 webhook 数据，通过 [go-playground/webhooks](https://github.com/go-playground/webhooks) 实现。
 - 拼装数据，根据 GitHub API 要求，以及自身需要拼装数据。
 - 发送请求，通过 [go-github](https://github.com/google/go-github) 实现。
+
+# 
+
+启动时，获取 issue 列表，存储 issue 与路径的对应关系
+
+# 自动同步图片
+
+fork 仓库
+
+基于最新的 istio/istio.io 更新
+
+自动复制所有图片，
+
+调用提交 PR 
+
+
+- 扫描文件 Title 包含 Deprecated 则加上标签，不再追踪？
+
+# 追踪方式
+
+除非是新增或删除，否则对无人维护的 issue，不做追踪（也就是不更新）
+
+对有人维护的 issue，持续追踪：
+
+1. 获取并遍历 commit，从 HEAD 向前遍历，直至找到上次的 commit sha
+https://developer.github.com/v3/repos/commits/#list-commits-on-a-repository
+
+1. 获取 commit 对应的 PR（一个 PR 的多个 commit 去重）
+https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-commit
+
+1. 获取 PR 涉及的文件，根据路径和状态，对 issue 列表中管理的 issue 做出处理。
+对于重命名文件，可以根据 previous_filename 获取之前的文件名
+https://developer.github.com/v3/pulls/#list-pull-requests-files
+
+1. 找到文件对应的 issue，调用 issue 相关的 api（新增、删除、重命名、更新、comment）
+https://developer.github.com/v3/issues/
+
+issue 模板
+path: content/en/docs/tasks/traffic-management/traffic-shifting/index.md
+
+comment 模板
+status: modified
+pr:
+commit:
+diff: https://github.com/istio/istio.io/commit/<commit_sha>#diff-<怎么得到？>
+
+怎么得到：先 GET 目标 PR 网页，根据 title 提取出 #herf -> 拼接 URL
+<a title="content/en/docs/tasks/traffic-management/traffic-shifting/snips.sh"
+class="link-gray-dark"
+href="#diff-7999b90bd19e931533e1a7f4c86c44f4">cont ent/en/docs/tasks/traffic-management/traffic-shifting/snips.sh</a>

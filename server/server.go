@@ -20,7 +20,7 @@ var (
 )
 
 func Start(token string) {
-	conf, ok := viper.Get("config").(*config.Config)
+	conf, ok := viper.Get("config").(*config.Config2)
 	if !ok {
 		panic("viper get config fail")
 	}

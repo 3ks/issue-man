@@ -18,7 +18,7 @@ var Instructions map[string]Flow
 var Jobs map[string]Job
 
 func Init() {
-	conf, ok := viper.Get("config").(*Config)
+	conf, ok := viper.Get("config").(*Config2)
 	if !ok {
 		panic("viper get config fail")
 	}

@@ -1,6 +1,48 @@
 package config
 
+type base struct {
+	ApiVersion string `yaml:"api_version"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name string `yaml:"name"`
+	} `yaml:"metadata"`
+}
+
+type Repository struct {
+	base
+	Spec struct {
+		Selector struct {
+			Owner      string `yaml:"owner"`
+			Repository string `yaml:"repository"`
+		} `yaml:"selector"`
+		Token       string   `yaml:"token"`
+		Maintainers []string `yaml:"maintainers"`
+	} `yaml:"spec"`
+}
+
+type IssueCreate struct {
+	base
+	Spec struct {
+		Selector struct {
+			Owner      string `yaml:"owner"`
+			Repository string `yaml:"repository"`
+		} `yaml:"selector"`
+		Title     string   `yaml:"title"`
+		Body      string   `yaml:"body"`
+		Labels    []string `yaml:"labels"`
+		Assignees []string `yaml:"assignees"`
+		Milestone int      `yaml:"milestone"`
+	} `yaml:"spec"`
+}
+
 type Config struct {
+	Repository    Repository     `yaml:"repository"`
+	Issues        *[]IssueCreate `yaml:"issues"`
+	IssueComments *[]IssueCreate `yaml:"issue_comment"`
+	IssueJobs     *[]IssueCreate `yaml:"issue_jobs"`
+}
+
+type Config2 struct {
 	// 完整的仓库名字，即 组织名+仓库名。如：servicemesher/istio-handbook
 	FullRepositoryName string `mapstructure:"full_repository_name"`
 

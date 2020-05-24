@@ -1,10 +1,11 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"issue-man/config"
-	"issue-man/server"
 	"os"
 	"path"
 	"strings"
@@ -22,7 +23,7 @@ var (
 	c string
 
 	// 配置文件，同时也包含了 issue 处理流程
-	conf *config.Config
+	conf *config.Config2
 )
 
 func init() {
@@ -36,6 +37,7 @@ func start() {
 	if c == "" {
 		viper.SetConfigName("config")
 		viper.AddConfigPath(".")
+		c = "./config.yaml"
 	} else {
 		// 如果指定了配置文件，则读取配置文件
 		viper.SetConfigName(strings.TrimSuffix(path.Base(c), path.Ext(c)))
@@ -63,7 +65,7 @@ func start() {
 	//openStdFile()
 
 	// 初始化服务相关的东西
-	server.Start(token)
+	//server.Start(token)
 }
 
 // 重定向标准输出和标准错误
@@ -83,11 +85,22 @@ func openStdFile() {
 
 func initConf() {
 	// 读取配置文件
-	conf = &config.Config{}
-	err := viper.Unmarshal(&conf)
+	conf = &config.Config2{}
+	//err := viper.Unmarshal(&conf)
+	//if err != nil {
+	//	fmt.Printf("unable to decode into struct, %v\n", err)
+	//	os.Exit(1)
+	//}
+	data, err := afero.ReadFile(afero.NewOsFs(), c)
 	if err != nil {
-		fmt.Printf("unable to decode into struct, %v\n", err)
+		fmt.Printf("unable to load config file, %v\n", err)
 		os.Exit(1)
+	}
+	bf := bytes.NewBuffer(data)
+	cfgs := strings.Split(bf.String(), "---")
+	fmt.Println(len(cfgs))
+	for i := 0; i < len(cfgs); i++ {
+
 	}
 
 	// todo 对一些默认值进行处理
