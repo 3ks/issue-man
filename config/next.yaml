@@ -17,45 +17,114 @@ kind: "IssueCreate"
 metadata:
   name: "issue-create"
 spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
-  title: "-"
+  title: "@dir_name"
+  body: "path: @path "
   labels:
-  - "status/welcome"
+  - "status/pending"
   - "kind/page"
-  - "release/v0.3"
-  assignees:
-  - "noone"
-  milestone: 1
+  include:
+#  - path: "content/en/docs/reference/commands"
+#    label: "priority/P0"
+#  - path: "content/en/docs/reference/config"
+#    label: "priority/P0"
+  - path: "content/en/docs/"
+    label: "priority/P1"
+    project: 1 # TODO
+    notInclude:
+    - "content/en/docs/reference/commands"
+    - "content/en/docs/reference/config"
+  - path: "content/en/faq/"
+    label: "priority/P2"
+  - path: "content/en/blog/"
+    label: "priority/P3"
+  - path: "content/en/news/"
+    label: "priority/P3"
+  - path: "content/en/about/"
+    label: "priority/P4"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
 metadata:
-  name: "gorda.io-issue-confirm"
+  name: "issue-accept"
 spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
-  labels:
-    - "status/pending"
-  success: "this issue has ..."
-  fail: "sorry ..."
   rules:
-    instruct: "confirm"
-    permision:
-    - "@maintainer"
+    instruct: "accept"
     labels:
     - "status/welcome"
+    permision:
+    - "@maintainer"
+    - "@member"
+  action:
+    addLabels:
+    - "status/waiting-for-pushed"
+    removeLabels:
+    - "status/pending"
+    addAssignees:
+    - "@commenter"
+  feedback:
+    success: "xxx"
+    fail: "xxx"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
 metadata:
-  name: "gorda.io-issue-accept"
+  name: "issue-pushed"
 spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
+  rules:
+    instruct: "pushed"
+    labels:
+    - "status/waiting-for-pushed"
+    permision:
+    - "@maintainer"
+    - "@assigner"
+  action:
+    addLabels:
+    - "status/waiting-for-update"
+    removeLabels:
+    - "status/waiting-for-pushed"
+  feedback:
+    success: "xxx"
+    fail: "xxx"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-assign"
+spec:
+  rules:
+    instruct: "assign"
+    permision:
+    - "@maintainer"
+  action:
+    addAssigneer:
+      - "@mention"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-unassign"
+spec:
+  rules:
+    instruct: "unassign"
+    permision:
+    - "@maintainer"
+    - "@assigner" # 对于非 maintainer，仅能 unassign 评论者自己。
+  action:
+    addLabels:
+      - "status/pending"
+    removeLabels:
+      - "status/waiting-for-pushed"
+      - "status/waiting-for-update"
+    removeAssigner:
+      - "@mention"
+  feedback:
+    success: "thanks your your work @mention"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-pushed"
+spec:
   labels:
     - "status/accept"
   # todo 显式的指定添加的 label，移除的 label
@@ -85,37 +154,8 @@ spec:
 apiVersion: "v1"
 kind: "Job"
 metadata:
-  name: "gorda.io-issue-undo"
+  name: "upstream-sync"
 spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
-  labels:  # 添加该 label
-    - "status/pending"
-  remove_labels: # 移除该 label
-    - "status/stale"
-    - "status/waiting-for-pr"
-  assignees:
-    - ""
-  current_column_id: 9002 # Project 恢复到原来的 column
-  target_column_id: 9001
-  target_position: "top"
-  feedback: "Everyone can accept the issue now."
-  rules:
-    in: 14
-    labels: # 在该状态停留超过一定时间，则释放 issue
-      - "status/stale"
-# TODO 自动扫描更新 Job
----
-apiVersion: "v1"
-kind: "PullRequest"
-metadata:
-  name: "gorda.io-issue-accept"
-spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
-    ...
 # 根据对象的属性进行操作和判断。
 #
 # comment 相关的一些特殊字符

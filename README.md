@@ -74,7 +74,6 @@ fork 仓库
 
 调用提交 PR 
 
-
 - 扫描文件 Title 包含 Deprecated 则加上标签，不再追踪？
 
 # 追踪方式
@@ -97,12 +96,15 @@ https://developer.github.com/v3/pulls/#list-pull-requests-files
 https://developer.github.com/v3/issues/
 
 issue 模板
-path: content/en/docs/tasks/traffic-management/traffic-shifting/index.md
+title: 
+  docs/tasks/traffic-management/traffic-shifting
+body: 
+  path: content/en/docs/tasks/traffic-management/traffic-shifting/index.md
 
 comment 模板
 status: modified
-pr:
-commit:
+pr: 
+commit: 
 diff: https://github.com/istio/istio.io/commit/<commit_sha>#diff-<怎么得到？>
 
 怎么得到：先 GET 目标 PR 网页，根据 title 提取出 #herf -> 拼接 URL
