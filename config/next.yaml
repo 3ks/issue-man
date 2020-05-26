@@ -80,6 +80,7 @@ spec:
   action:
     addLabels:
     - "status/waiting-for-update"
+    - "status/waiting-for-update"
     removeLabels:
     - "status/waiting-for-pushed"
   feedback:
@@ -114,7 +115,7 @@ spec:
       - "status/pending"
     removeLabels:
       - "status/waiting-for-pushed"
-      - "status/waiting-for-update"
+      - "status/waiting-for-sync"
     removeAssigner:
       - "@mention"
   feedback:
@@ -156,6 +157,13 @@ kind: "Job"
 metadata:
   name: "upstream-sync"
 spec:
+  upstream:
+    owner: "istio"
+    repository: "istio.io"
+  rules:
+    labels:
+      - "status/waiting-for-sync"
+
 # 根据对象的属性进行操作和判断。
 #
 # comment 相关的一些特殊字符

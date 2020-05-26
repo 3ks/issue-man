@@ -1,6 +1,8 @@
 package main
 
-import "issue-man/cmd"
+import (
+	"issue-man/cmd"
+)
 
 func main() {
 	cmd.Execute()
