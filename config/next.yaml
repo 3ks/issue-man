@@ -155,14 +155,27 @@ spec:
 apiVersion: "v1"
 kind: "Job"
 metadata:
-  name: "upstream-sync"
+  name: "sync"
 spec:
   upstream:
     owner: "istio"
     repository: "istio.io"
   rules:
-    labels:
+    labels: # 逻辑或的关系
       - "status/waiting-for-sync"
+      - "status/waiting-for-update"
+---
+apiVersion: "v1"
+kind: "Job"
+metadata:
+  name: "remind"
+spec:
+  rules:
+    labels:
+      - "status/waiting-for-update"
+    in: 30
+    addLabels:
+      - "status/stale"
 
 # 根据对象的属性进行操作和判断。
 #
