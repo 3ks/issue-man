@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"issue-man/client"
 	"issue-man/config"
+	"issue-man/global"
 	"net/http"
 	"strings"
 	"time"
@@ -78,7 +79,7 @@ func Job(fullName string, job config.Job) {
 			if len(v.Assignees) > 0 {
 				assign = *v.Assignees[0].Login
 			}
-			reset := config.Jobs["reset"]
+			reset := global.Jobs["reset"]
 			hc := Comment{}
 			hc.Login = assign
 			hc.ResetDate = time.Now().AddDate(0, 0, int(reset.In)).In(time.Local).Format("2006-01-02")
@@ -98,7 +99,7 @@ func Job(fullName string, job config.Job) {
 			// 如果符合重置条件，则重置，并 continue
 			// 否则，再判断是否符合提醒条件，如果符合，则提醒
 			// 获取 events，判断状态持续时间。
-			ins := config.Instructions[job.InstructName]
+			ins := global.Instructions[job.InstructName]
 			resetDate, err := getResetDate(ss[0], ss[1], *v.Number, job.Labels, int(job.In), int(ins.Delay), ins.Name)
 			if err != nil {
 				fmt.Printf("get and judge issue event failed. err: %v\n", err.Error())

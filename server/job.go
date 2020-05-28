@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"issue-man/config"
+	"issue-man/global"
 	"issue-man/operation"
 	"time"
 )
@@ -12,9 +13,9 @@ import (
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
 //      每天定时检测，满足相关条件时，则执行一些操作
 func job(conf config.Config2) {
-	fmt.Printf("loaded jobs: %#v\n", config.Jobs)
+	fmt.Printf("loaded jobs: %#v\n", global.Jobs)
 	// 无任务
-	if len(config.Jobs) == 0 {
+	if len(global.Jobs) == 0 {
 		return
 	}
 
@@ -50,7 +51,7 @@ func job(conf config.Config2) {
 		}
 		// 遍历检测任务
 		if !skip {
-			for _, v := range config.Jobs {
+			for _, v := range global.Jobs {
 				operation.Job(conf.FullRepositoryName, v)
 			}
 		}

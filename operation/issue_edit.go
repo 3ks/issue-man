@@ -6,6 +6,7 @@ import (
 	gg "github.com/google/go-github/v30/github"
 	"issue-man/client"
 	"issue-man/config"
+	"issue-man/global"
 	"net/http"
 	"time"
 )
@@ -57,7 +58,7 @@ func IssueEdit(info Info, flow config.Flow) {
 		hc.Login = info.Login
 		// 这可能是一个修改重置时间的指令
 		if flow.JobName == "reset" {
-			if job, ok := config.Jobs[flow.JobName]; ok {
+			if job, ok := global.Jobs[flow.JobName]; ok {
 				resetDate, err := getResetDate(info.Owner, info.Repository, info.IssueNumber, flow.CurrentLabel, int(job.In), int(flow.Delay), flow.Name)
 				if err != nil {
 					fmt.Printf("get reset date for instruct failed. instruct: %v, err: %v\n", flow.Name, err.Error())

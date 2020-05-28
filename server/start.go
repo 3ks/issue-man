@@ -1,10 +1,12 @@
+// start.go 对应 start 子命令的实现
+// start 实现的是：
+// 1. 启动 HTTP 服务，监听 Webhook 时间，响应任务仓库的指令。
+// 2. 定时检测上游仓库的更新，分析操作，根据规则对任务仓库的 issue 做出处理（新增，更新通知，删除）
 package server
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"gopkg.in/go-playground/webhooks.v5/github"
-	"issue-man/client"
 	"issue-man/config"
 	"log"
 	"net/http"
@@ -19,18 +21,9 @@ var (
 	events []github.Event
 )
 
-func Start(token string) {
-	conf, ok := viper.Get("config").(*config.Config2)
-	if !ok {
-		panic("viper get config fail")
-	}
-	fullName = conf.FullRepositoryName
+func Start(conf config.Config) {
 
-	// 初始化 GitHub client
-	client.Init(token)
-
-	// 初始化指令及 maintainer
-	config.Init()
+	fullName = conf.Repository.Spec.Selector.Owner
 
 	// 初始化处理的事件列表
 	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}

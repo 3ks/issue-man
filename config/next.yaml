@@ -6,7 +6,6 @@ spec:
   selector:
     owner: "gorda"
     repository: "gorda.io"
-  token: "xxx"
   maintainers:
     - "aaa"
     - "bbb"
@@ -22,7 +21,9 @@ spec:
   labels:
   - "status/pending"
   - "kind/page"
-  include:
+  assignees:
+  - "gorda"
+  includes:
 #  - path: "content/en/docs/reference/commands"
 #    label: "priority/P0"
 #  - path: "content/en/docs/reference/config"
@@ -30,9 +31,9 @@ spec:
   - path: "content/en/docs/"
     label: "priority/P1"
     project: 1 # TODO
-    notInclude:
-    - "content/en/docs/reference/commands"
-    - "content/en/docs/reference/config"
+    exclude:
+    - path: "content/en/docs/reference/commands"
+    - path: "content/en/docs/reference/config"
   - path: "content/en/faq/"
     label: "priority/P2"
   - path: "content/en/blog/"
@@ -128,7 +129,6 @@ metadata:
 spec:
   labels:
     - "status/accept"
-  # todo 显式的指定添加的 label，移除的 label
   limit: 10
   assignees:
     - "@commentator"
@@ -157,9 +157,6 @@ kind: "Job"
 metadata:
   name: "sync"
 spec:
-  upstream:
-    owner: "istio"
-    repository: "istio.io"
   rules:
     labels: # 逻辑或的关系
       - "status/waiting-for-sync"
@@ -174,6 +171,7 @@ spec:
     labels:
       - "status/waiting-for-update"
     in: 30
+  action:
     addLabels:
       - "status/stale"
 

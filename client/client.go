@@ -1,3 +1,4 @@
+// client 包，指的是 GitHub 客户端库的初始化和使用。
 package client
 
 import (

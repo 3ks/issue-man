@@ -1,6 +1,15 @@
 package config
 
-type base struct {
+import "fmt"
+
+type Config struct {
+	Repository    *Repository     `yaml:"repository"`
+	IssueCreate   *IssueCreate    `yaml:"issue_create"`
+	IssueComments []*IssueComment `yaml:"issue_comment"`
+	Jobs          []*Job          `yaml:"jobs"`
+}
+
+type Base struct {
 	ApiVersion string `yaml:"api_version"`
 	Kind       string `yaml:"kind"`
 	Metadata   struct {
@@ -8,85 +17,92 @@ type base struct {
 	} `yaml:"metadata"`
 }
 
+type Selector struct {
+	Owner      string `yaml:"owner"`
+	Repository string `yaml:"repository"`
+}
+
+func (s Selector) GetFullName() string {
+	return fmt.Sprintf("%s/%s", s.Owner, s.Repository)
+}
+
+// 仓库及一些全局相关的配置
 type Repository struct {
-	base
+	Base
 	Spec struct {
-		Selector struct {
-			Owner      string `yaml:"owner"`
-			Repository string `yaml:"repository"`
-		} `yaml:"selector"`
-		Token       string   `yaml:"token"`
-		Maintainers []string `yaml:"maintainers"`
+		Workspace Selector `yaml:"workspace"`
+		Upstream  Selector `yaml:"upstream"`
+		// TODO 手动创建一个特殊的 issue，用于存储 commit 指针。
+		CommitIssue *int `yaml:"commit_issue"`
+		// TODO 动态维护 maintainers 列表和 member 列表
+		// 通过 https://developer.github.com/v3/teams/members/#list-team-members  获取 maintainer 成员
+		// 通过 https://developer.github.com/webhooks/event-payloads/#membership Webhook 监听团队成员变动并更新
+		// Member 同理，
+		// 通过 https://developer.github.com/v3/orgs/members/#members-list 获取组织成员
+		// 通过 https://developer.github.com/webhooks/event-payloads/#organization Webhook 监听组织成员并更新
+		MaintainerTeam *int    `yaml:"maintainer_team"`
+		Port           *string `yaml:"port"`
+		LogLevel       *string `yaml:"log_level"`
+		Verbose        *bool   `yaml:"verbose"`
 	} `yaml:"spec"`
 }
 
+// 创建 Issue 相关的配置
 type IssueCreate struct {
-	base
+	Base
 	Spec struct {
-		Selector struct {
-			Owner      string `yaml:"owner"`
-			Repository string `yaml:"repository"`
-		} `yaml:"selector"`
-		Title     string   `yaml:"title"`
-		Body      string   `yaml:"body"`
-		Labels    []string `yaml:"labels"`
-		Assignees []string `yaml:"assignees"`
-		Milestone int      `yaml:"milestone"`
+		Title string `yaml:"title"`
+		// Title 要跳过的段数
+		TitleSkip *int `yaml:"titleSkip"`
+		// 选择风格
+		Body      string     `yaml:"body"`
+		Labels    []*string  `yaml:"labels"`
+		Assignees []*string  `yaml:"assignees"`
+		Milestone *int       `yaml:"milestone"`
+		Includes  []*Include `yaml:"includes"`
 	} `yaml:"spec"`
 }
 
-type Config struct {
-	Repository    Repository     `yaml:"repository"`
-	Issues        *[]IssueCreate `yaml:"issues"`
-	IssueComments *[]IssueCreate `yaml:"issue_comment"`
-	IssueJobs     *[]IssueCreate `yaml:"issue_jobs"`
+type Include struct {
+	Path    *string    `yaml:"path"`
+	Labels  []*string  `yaml:"labels"`
+	Exclude []*Include `yaml:"exclude"`
 }
 
-type Config2 struct {
-	// 完整的仓库名字，即 组织名+仓库名。如：servicemesher/istio-handbook
-	FullRepositoryName string `mapstructure:"full_repository_name"`
-
-	// 是否在相关 issue 内 comment 错误原因
-	Verbose bool `mapstructure:"verbose"`
-
-	// Maintains 列表
-	Maintainers []string `mapstructure:"maintainers"`
-
-	// Job 配置
-	// 检测时间
-	DetectionAt string `mapstructure:"detection_at"`
-	// 周末放个假
-	SkipWeekend bool `mapstructure:"skip_weekend"`
-
-	// 通过配置文件定义任务流程
-	Flows []Flow `mapstructure:"flows"`
-
-	// 任务
-	Jobs []Job `mapstructure:"jobs"`
-
-	// 其它设置
-	// 监听端口
-	Port string `mapstructure:"port"`
-	// 日志目录，默认为 ./log
-	LogDir string `mapstructure:"log_dir"`
-	// 日志文件，默认为 issue-man.log（位于 LogDir 下）
-	LogFile string `mapstructure:"log_file"`
-	// 标准输出文件，默认为 issue-man.std.log（位于 LogDir 下）
-	StdOutFile string `mapstructure:"std_out_file"`
+// Issue Comment 相关的配置
+// 也就是指令相关的配置
+// 创建 Issue 相关的配置
+type IssueComment struct {
+	Base
+	Spec struct {
+		Rules  *Option `yaml:"rules"`
+		Action *Option `yaml:"action"`
+	} `yaml:"spec"`
 }
 
-// Job
+// 选项
+type Option struct {
+	Instruct        *string   `yaml:"instruct"`
+	Permissions     []*string `yaml:"permissions"`
+	In              *int      `yaml:"in"`
+	Labels          []*string `yaml:"labels"`
+	AddLabels       []*string `yaml:"add_labels"`
+	AddLabelsLimit  *int      `yaml:"add_labels_limit"`
+	RemoveLabels    []*string `yaml:"remove_labels"`
+	Assigners       []*string `yaml:"assigners"`
+	AddAssigners    []*string `yaml:"add_assigners"`
+	RemoveAssigners []*string `yaml:"remove_assigners"`
+	SuccessFeedback *string   `yaml:"success_feedback"`
+	FailFeedback    *string   `yaml:"fail_feedback"`
+}
+
+// Job 定时任务相关的配置
+// 也就是定时更新和状态检测相关的配置
+// 创建 Issue 相关的配置
 type Job struct {
-	Name            string   `mapstructure:"name"`
-	In              int64    `mapstructure:"in"`
-	InstructName    string   `mapstructure:"instruct_name"`
-	Labels          []string `mapstructure:"labels"`
-	RemoveLabels    []string `mapstructure:"remove_labels"`
-	TargetLabels    []string `mapstructure:"target_label"`
-	AssigneesPolicy string   `mapstructure:"assignees_policy"`
-	CurrentColumnID int64    `mapstructure:"current_column_id"`
-	TargetColumnID  int64    `mapstructure:"target_column_id"`
-	TargetPosition  string   `mapstructure:"target_position"`
-	WarnFeedback    string   `mapstructure:"warn_feedback"`
-	Feedback        string   `mapstructure:"feedback"`
+	Base
+	Spec struct {
+		Rules  *Option `yaml:"rules"`
+		Action *Option `yaml:"action"`
+	} `yaml:"spec"`
 }

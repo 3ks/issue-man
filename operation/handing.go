@@ -3,7 +3,7 @@ package operation
 import (
 	"fmt"
 	"gopkg.in/go-playground/webhooks.v5/github"
-	"issue-man/config"
+	"issue-man/global"
 )
 
 // is 是一个指令 map，其中：
@@ -11,7 +11,7 @@ import (
 // value 为提及人员，可能为空
 func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 	for k, v := range is {
-		if _, ok := config.Instructions[k]; ok {
+		if _, ok := global.Instructions[k]; ok {
 			do(k, v, payload)
 		} else {
 			fmt.Printf("unkown instruction: %s, mention: %#v\n", k, v)
@@ -33,7 +33,7 @@ func do(ins string, mention []string, payload github.IssueCommentPayload) {
 	// 基本信息
 	info := GetInfo(payload)
 	info.Mention = mention
-	flow := config.Instructions[ins]
+	flow := global.Instructions[ins]
 
 	fmt.Printf("do: %s, mention: %#v, info: %#v\n", ins, mention, info)
 
