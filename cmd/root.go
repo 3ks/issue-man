@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
-	"issue-man/client"
 	"issue-man/config"
 	"issue-man/global"
 	"os"
@@ -15,7 +14,7 @@ import (
 )
 
 const (
-	//  如果不想在命令行中指定 GitHub Person Token，也可以选择在环境变量内指定。
+	//  如果不想在命令行中指定 Client Person Token，也可以选择在环境变量内指定。
 	// 环境变量名为 GITHUB_TOKEN
 	IssueManToken = "GITHUB_TOKEN"
 )
@@ -35,7 +34,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "issue-man",
 	Short: "issue 生命周期的机器人",
-	Long:  `issue-man 一个用于管理 GitHub Issue 生命周期的机器人。`,
+	Long:  `issue-man 一个用于管理 Client Issue 生命周期的机器人。`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Usage()
 	},
@@ -125,11 +124,8 @@ func loadAndInit() config.Config {
 		}
 	}
 
-	// 初始化一些全局变量
-	global.Init(conf)
-
-	// 初始化 GitHub client
-	client.Init(token)
+	// 初始化 Client Client，初始化一些全局变量，其中一些信息需调用 Client API
+	global.Init(token, conf)
 
 	// 返回配置对象
 	return *conf

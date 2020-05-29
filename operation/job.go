@@ -3,7 +3,6 @@ package operation
 import (
 	"context"
 	"fmt"
-	"issue-man/client"
 	"issue-man/config"
 	"issue-man/global"
 	"net/http"
@@ -242,7 +241,7 @@ func LastDelayAt(owner, repository string, issueNumber, delay int, instructName 
 	req.PerPage = 100
 
 	for i := 1; i <= 100; i++ {
-		cs, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
+		cs, resp, err := global.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
 		if err != nil {
 			return commentAt, err
 		}
@@ -277,7 +276,7 @@ func LastRemindAt(owner, repository string, issueNumber int, instructName string
 	req.PerPage = 100
 
 	for i := 1; i <= 100; i++ {
-		cs, resp, err := client.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
+		cs, resp, err := global.Get().Issues.ListComments(context.TODO(), owner, repository, issueNumber, req)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +312,7 @@ func LastRemindAt(owner, repository string, issueNumber int, instructName string
 // 并判断某些 label 的创建时间
 func getLabelCreateAt(owner, repository string, issueNumber int, labels []string) (createdAt *time.Time, err error) {
 	// 会先判断 issue 目前是否含有期望的 label
-	ls, _, err := client.Get().Issues.Get(context.TODO(), owner, repository, issueNumber)
+	ls, _, err := global.Get().Issues.Get(context.TODO(), owner, repository, issueNumber)
 	if err != nil {
 		fmt.Printf("get issue by issue_number fail. err: %v\n", err.Error())
 		return nil, err
@@ -333,7 +332,7 @@ func getLabelCreateAt(owner, repository string, issueNumber int, labels []string
 
 	for i := 1; i <= 100; i++ {
 		req.Page = i
-		es, resp, err := client.Get().Issues.ListIssueEvents(context.TODO(), owner, repository, issueNumber, req)
+		es, resp, err := global.Get().Issues.ListIssueEvents(context.TODO(), owner, repository, issueNumber, req)
 		if err != nil {
 			fmt.Printf("get list events by issue fail. err: %v\n", err.Error())
 			return nil, err
@@ -380,7 +379,7 @@ func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, e
 	for i := 1; i < 100; i++ {
 		// 页数
 		req.Page = i
-		is, resp, err := client.Get().Issues.ListByRepo(context.TODO(), owner, repository, req)
+		is, resp, err := global.Get().Issues.ListByRepo(context.TODO(), owner, repository, req)
 		if err != nil {
 			fmt.Printf("get list issue by repo fail. err: %v\n", err.Error())
 			break

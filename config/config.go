@@ -1,6 +1,10 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"path"
+	"strings"
+)
 
 type Config struct {
 	Repository    *Repository     `yaml:"repository"`
@@ -33,16 +37,10 @@ type Repository struct {
 		Workspace Selector `yaml:"workspace"`
 		Upstream  Selector `yaml:"upstream"`
 		// TODO 手动创建一个特殊的 issue，用于存储 commit 指针。
-		CommitIssue *int `yaml:"commit_issue"`
-		// TODO 动态维护 maintainers 列表和 member 列表
-		// 通过 https://developer.github.com/v3/teams/members/#list-team-members  获取 maintainer 成员
-		// 通过 https://developer.github.com/webhooks/event-payloads/#membership Webhook 监听团队成员变动并更新
-		// Member 同理，
-		// 通过 https://developer.github.com/v3/orgs/members/#members-list 获取组织成员
-		// 通过 https://developer.github.com/webhooks/event-payloads/#organization Webhook 监听组织成员并更新
-		MaintainerTeam *int    `yaml:"maintainer_team"`
+		CommitIssue    *int    `yaml:"commitIssue"`
+		MaintainerTeam *string `yaml:"maintainerTeam"`
 		Port           *string `yaml:"port"`
-		LogLevel       *string `yaml:"log_level"`
+		LogLevel       *string `yaml:"logLevel"`
 		Verbose        *bool   `yaml:"verbose"`
 	} `yaml:"spec"`
 }
@@ -51,11 +49,6 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		Title string `yaml:"title"`
-		// Title 要跳过的段数
-		TitleSkip *int `yaml:"titleSkip"`
-		// 选择风格
-		Body      string     `yaml:"body"`
 		Labels    []*string  `yaml:"labels"`
 		Assignees []*string  `yaml:"assignees"`
 		Milestone *int       `yaml:"milestone"`
@@ -69,40 +62,65 @@ type Include struct {
 	Exclude []*Include `yaml:"exclude"`
 }
 
+func (i Include) OK(p string) bool {
+	// 仅判断 .md 文件
+	if path.Ext(p) != ".md" {
+		return false
+	}
+
+	// 不包含前缀
+	if !strings.HasPrefix(p, *i.Path) {
+		return false
+	}
+
+	// 排除的子目录
+	for _, v := range i.Exclude {
+		if strings.HasPrefix(p, *v.Path) {
+			return false
+		}
+	}
+	return true
+}
+
 // Issue Comment 相关的配置
 // 也就是指令相关的配置
 // 创建 Issue 相关的配置
 type IssueComment struct {
 	Base
 	Spec struct {
-		Rules  *Option `yaml:"rules"`
-		Action *Option `yaml:"action"`
+		Rules  *Rule   `yaml:"rules"`
+		Action *Action `yaml:"action"`
 	} `yaml:"spec"`
 }
 
-// 选项
-type Option struct {
-	Instruct        *string   `yaml:"instruct"`
-	Permissions     []*string `yaml:"permissions"`
-	In              *int      `yaml:"in"`
-	Labels          []*string `yaml:"labels"`
-	AddLabels       []*string `yaml:"add_labels"`
-	AddLabelsLimit  *int      `yaml:"add_labels_limit"`
-	RemoveLabels    []*string `yaml:"remove_labels"`
-	Assigners       []*string `yaml:"assigners"`
-	AddAssigners    []*string `yaml:"add_assigners"`
-	RemoveAssigners []*string `yaml:"remove_assigners"`
-	SuccessFeedback *string   `yaml:"success_feedback"`
-	FailFeedback    *string   `yaml:"fail_feedback"`
+// 条件
+type Rule struct {
+	Instruct    *string   `yaml:"instruct"`
+	Permissions []*string `yaml:"permissions"`
+	Labels      []*string `yaml:"labels"`
+	Assigners   []*string `yaml:"assigners"`
+}
+
+// 动作
+type Action struct {
+	AddLabels       []*string `yaml:"addLabels"`
+	AddLabelsLimit  *int      `yaml:"addLabelsLimit"`
+	RemoveLabels    []*string `yaml:"removeLabels"`
+	AddAssigners    []*string `yaml:"addAssigners"`
+	RemoveAssigners []*string `yaml:"removeAssigners"`
+	State           *string   `json:"state"`
+	SuccessFeedback *string   `yaml:"successFeedback"`
+	FailFeedback    *string   `yaml:"failFeedback"`
 }
 
 // Job 定时任务相关的配置
 // 也就是定时更新和状态检测相关的配置
-// 创建 Issue 相关的配置
+// 同时，依赖 `创建 Issue` 的配置
 type Job struct {
 	Base
 	Spec struct {
-		Rules  *Option `yaml:"rules"`
-		Action *Option `yaml:"action"`
+		// TODO
+		//Rules  *Option `yaml:"rules"`
+		//Action *Option `yaml:"action"`
 	} `yaml:"spec"`
 }

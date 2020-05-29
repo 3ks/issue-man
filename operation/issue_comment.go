@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	gg "github.com/google/go-github/v30/github"
-	"issue-man/client"
+	"issue-man/global"
 	"net/http"
 )
 
@@ -17,7 +17,7 @@ func IssueComment(info Info, body string) {
 
 	comment := &gg.IssueComment{}
 	comment.Body = &body
-	_, resp, err := client.Get().Issues.CreateComment(context.TODO(), info.Owner, info.Repository, info.IssueNumber, comment)
+	_, resp, err := global.Get().Issues.CreateComment(context.TODO(), info.Owner, info.Repository, info.IssueNumber, comment)
 	if err != nil {
 		fmt.Printf("comment_issue_fail err: %v\n", err.Error())
 		return

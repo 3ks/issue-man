@@ -3,7 +3,6 @@ package operation
 import (
 	"context"
 	"fmt"
-	"issue-man/client"
 	"issue-man/global"
 )
 
@@ -69,7 +68,7 @@ func CheckPermission(permission []string, info Info) bool {
 }
 
 func isMember(info Info) bool {
-	is, _, err := client.Get().Organizations.IsMember(context.TODO(), info.Owner, info.Login)
+	is, _, err := global.Get().Organizations.IsMember(context.TODO(), info.Owner, info.Login)
 	if err != nil {
 		fmt.Printf("query is member fail err: %v\n", err.Error())
 		return false

@@ -16,21 +16,20 @@ kind: "IssueCreate"
 metadata:
   name: "issue-create"
 spec:
-  title: "@dir_name"
-  body: "path: @path "
   labels:
   - "status/pending"
   - "kind/page"
   assignees:
   - "gorda"
-  includes:
+  includes: # 判断逻辑为包含，而不是前缀
 #  - path: "content/en/docs/reference/commands"
 #    label: "priority/P0"
 #  - path: "content/en/docs/reference/config"
 #    label: "priority/P0"
+  - path: "content/en/_index.html"
+    label: "priority/P0"
   - path: "content/en/docs/"
     label: "priority/P1"
-    project: 1 # TODO
     exclude:
     - path: "content/en/docs/reference/commands"
     - path: "content/en/docs/reference/config"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	gg "github.com/google/go-github/v30/github"
-	"issue-man/client"
+	"issue-man/global"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func CheckCount(info Info, labels []string, limit int) bool {
 	req.Assignee = info.Login
 	req.Labels = labels
 
-	is, resp, err := client.Get().Issues.ListByRepo(context.TODO(), info.Owner, info.Repository, req)
+	is, resp, err := global.Get().Issues.ListByRepo(context.TODO(), info.Owner, info.Repository, req)
 	if err != nil {
 		fmt.Printf("list issue by repo fail. err: %v\n", err.Error())
 		return false

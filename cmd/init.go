@@ -27,7 +27,7 @@ func init() {
 		Long:  `根据上游仓库内容和规则，初始化任务仓库内容。`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// 初始化配置初始化服务相关的东西
-			server.Start(loadAndInit())
+			server.Init(loadAndInit())
 		},
 	}
 }

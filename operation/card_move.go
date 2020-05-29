@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	gg "github.com/google/go-github/v30/github"
-	"issue-man/client"
 	"issue-man/config"
+	"issue-man/global"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func CardMove(info Info, flow config.Flow) {
 		return
 	}
 	// 先获取 card 列表
-	cards, resp, err := client.Get().Projects.ListProjectCards(context.TODO(), flow.CurrentColumnID, nil)
+	cards, resp, err := global.Get().Projects.ListProjectCards(context.TODO(), flow.CurrentColumnID, nil)
 	if err != nil {
 		fmt.Printf("list column card fail. err: %v\n", err.Error())
 		return
@@ -49,7 +49,7 @@ func CardMove(info Info, flow config.Flow) {
 				Position: position,
 				ColumnID: flow.TargetColumnID,
 			}
-			resp, err := client.Get().Projects.MoveProjectCard(context.TODO(), *v.ID, req)
+			resp, err := global.Get().Projects.MoveProjectCard(context.TODO(), *v.ID, req)
 			if err != nil {
 				fmt.Printf("move card fail. err: %v\n", err.Error())
 				return

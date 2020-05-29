@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	gg "github.com/google/go-github/v30/github"
-	"issue-man/client"
 	"issue-man/config"
 	"issue-man/global"
 	"net/http"
@@ -42,7 +41,7 @@ func IssueEdit(info Info, flow config.Flow) {
 	updateAssign(req, info, flow)
 
 	// 尝试调用更新接口
-	_, resp, err := client.Get().Issues.Edit(context.TODO(), info.Owner, info.Repository, info.IssueNumber, req)
+	_, resp, err := global.Get().Issues.Edit(context.TODO(), info.Owner, info.Repository, info.IssueNumber, req)
 	if err != nil {
 		fmt.Printf("update_isse_fail err: %v\n", err.Error())
 		return
