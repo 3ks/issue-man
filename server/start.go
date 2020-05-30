@@ -21,6 +21,7 @@ var (
 	events []github.Event
 )
 
+// TODO 定期检查同步状态。
 func Start(conf config.Config) {
 
 	fullName = conf.Repository.Spec.Selector.Owner

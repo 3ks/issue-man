@@ -49,9 +49,10 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		Labels    []*string  `yaml:"labels"`
-		Assignees []*string  `yaml:"assignees"`
+		Labels    *[]string  `yaml:"labels"`
+		Assignees *[]string  `yaml:"assignees"`
 		Milestone *int       `yaml:"milestone"`
+		Content   *string    `yaml:"content"`
 		Includes  []*Include `yaml:"includes"`
 	} `yaml:"spec"`
 }
@@ -62,20 +63,21 @@ type Include struct {
 	Exclude []*Include `yaml:"exclude"`
 }
 
+// 判断是否处理该文件
 func (i Include) OK(p string) bool {
-	// 仅判断 .md 文件
-	if path.Ext(p) != ".md" {
+	// 仅判断 .md 文件和 html 文件
+	if path.Ext(p) != ".md" || path.Ext(p) != ".html" {
 		return false
 	}
 
-	// 不包含前缀
-	if !strings.HasPrefix(p, *i.Path) {
+	// 不包含关键字
+	if !strings.Contains(p, *i.Path) {
 		return false
 	}
 
 	// 排除的子目录
 	for _, v := range i.Exclude {
-		if strings.HasPrefix(p, *v.Path) {
+		if strings.Contains(p, *v.Path) {
 			return false
 		}
 	}

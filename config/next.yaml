@@ -21,12 +21,13 @@ spec:
   - "kind/page"
   assignees:
   - "gorda"
+  content: "content/en/"
   includes: # 判断逻辑为包含，而不是前缀
 #  - path: "content/en/docs/reference/commands"
 #    label: "priority/P0"
 #  - path: "content/en/docs/reference/config"
 #    label: "priority/P0"
-  - path: "content/en/_index.html"
+  - path: "_index"
     label: "priority/P0"
   - path: "content/en/docs/"
     label: "priority/P1"
