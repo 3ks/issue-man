@@ -137,8 +137,17 @@ func getIssues(c config.Config) (issues map[string]*github.Issue, err error) {
 	return issues, nil
 }
 
+// TODO 定时检测应该存在的 issue，和实际存在的 issue
+// TODO 并做出添加、更新、删除操作。（频率较低）
+// TODO 根据 commit 做出操作（频率较高）
 // 根据配置、文件列表、已存在 issue，判断生成最终操作列表
 // 遍历文件，判断文件是否符合条件，符合则直接创建
+// （实现根据文件名生成 title、body。根据配置生成 label、assignees 的 issue）
+// （实现根据 body 提取文件列表的方法）
+// 1. 根据规则获取已存在 issue 列表
+// 2. 遍历，根据 title 判断 issue 是否已经存在
+// 3. 更新 issue（如果文件有变化），assignees 如果不为空，则不修改，如果为空则判断配置是否有配置 assignees，如都为空则不操作。
+// 4. 创建 issue
 func genAndCreateIssues(conf config.Config, fs map[string]string) {
 	issues := make(map[string]*github.IssueRequest)
 	for k := range fs {

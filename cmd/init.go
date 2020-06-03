@@ -14,7 +14,7 @@ var (
 
 func init() {
 	// 添加至 root 节点
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(initCmd)
 
 	// 解析参数
 	initCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")

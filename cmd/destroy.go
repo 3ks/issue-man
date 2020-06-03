@@ -13,7 +13,7 @@ var (
 
 func init() {
 	// 添加至 root 节点
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(destroyCmd)
 
 	// 解析参数
 	destroyCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
