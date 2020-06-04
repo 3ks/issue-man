@@ -12,13 +12,6 @@ var (
 )
 
 func init() {
-	// 添加至 root 节点
-	rootCmd.AddCommand(destroyCmd)
-
-	// 解析参数
-	destroyCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
-	destroyCmd.PersistentFlags().StringVarP(&c, "config", "c", "", "指定配置文件路径")
-
 	// destroy
 	destroyCmd = &cobra.Command{
 		Use:   "start",
@@ -29,4 +22,11 @@ func init() {
 			server.Destroy(loadAndInit())
 		},
 	}
+
+	// 添加至 root 节点
+	rootCmd.AddCommand(destroyCmd)
+
+	// 解析参数
+	destroyCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
+	destroyCmd.PersistentFlags().StringVarP(&c, "config", "c", "", "指定配置文件路径")
 }

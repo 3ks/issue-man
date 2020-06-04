@@ -11,13 +11,6 @@ var (
 )
 
 func init() {
-	// 添加至 root 节点
-	rootCmd.AddCommand(startCmd)
-
-	// 解析参数
-	startCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
-	startCmd.PersistentFlags().StringVarP(&c, "config", "c", "", "指定配置文件路径")
-
 	// start
 	startCmd = &cobra.Command{
 		Use:   "start",
@@ -28,4 +21,11 @@ func init() {
 			server.Start(loadAndInit())
 		},
 	}
+
+	// 添加至 root 节点
+	rootCmd.AddCommand(startCmd)
+
+	// 解析参数
+	startCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "GitHub Person Token.")
+	startCmd.PersistentFlags().StringVarP(&c, "config", "c", "", "指定配置文件路径")
 }
