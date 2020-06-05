@@ -248,23 +248,16 @@ func genAndCreateIssues(fs map[string]string) {
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
-func updateIssue(include config.Include, file string, exist github.Issue) (new *github.IssueRequest) {
-	new = &github.IssueRequest{}
-	new.Title = exist.Title
-	new.Body = genBody(file, *exist.Body)
+func updateIssue(include config.Include, file string, exist github.Issue) (update *github.IssueRequest) {
+	update = &github.IssueRequest{}
+	update.Title = exist.Title
+	update.Body = genBody(file, *exist.Body)
 
 	// 对于已存在的 issue
 	// label、assignees、milestone 不会变化
-	labels, assignees := make([]string, 0), make([]string, 0)
-	for _, v := range exist.Labels {
-		labels = append(labels, *v.Name)
-	}
-	for _, v := range exist.Assignees {
-		assignees = append(assignees, *v.Login)
-	}
-	new.Labels = &labels
-	new.Assignees = &assignees
-	new.Milestone = exist.Milestone.Number
+	update.Labels = convertLabel(exist.Labels)
+	update.Assignees = convertAssignees(exist.Assignees)
+	update.Milestone = exist.Milestone.Number
 	return
 }
 
@@ -273,10 +266,10 @@ func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new.Title = parseTitleFromPath(file)
 	new.Body = genBody(file, "")
 
-	labels := *global.Conf.IssueCreate.Spec.Labels
-	for _, v := range include.Labels {
-		labels = append(labels, *v)
-	}
+	// 创建新切片
+	labels := make([]string, len(*global.Conf.IssueCreate.Spec.Labels))
+	copy(labels, *global.Conf.IssueCreate.Spec.Labels)
+	labels = append(labels, *include.Labels...)
 
 	new.Labels = &labels
 	new.Assignees = global.Conf.IssueCreate.Spec.Assignees
@@ -313,8 +306,9 @@ func genBody(file, oldBody string) (body *string) {
 			files[v] = v
 		}
 	}
-	// map 转 slice 以便排序
+
 	fs := make([]string, len(files))
+	// map 转 slice 以便排序
 	count := 0
 	for k := range files {
 		fs[count] = k

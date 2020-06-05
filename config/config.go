@@ -59,7 +59,7 @@ type IssueCreate struct {
 
 type Include struct {
 	Path    *string    `yaml:"path"`
-	Labels  []*string  `yaml:"labels"`
+	Labels  *[]string  `yaml:"labels"`
 	Exclude []*Include `yaml:"exclude"`
 }
 

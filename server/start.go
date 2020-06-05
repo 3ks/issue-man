@@ -24,7 +24,7 @@ var (
 // TODO 定期检查同步状态。
 func Start(conf config.Config) {
 
-	fullName = conf.Repository.Spec.Selector.Owner
+	fullName = conf.Repository.Spec.Workspace.GetFullName()
 
 	// 初始化处理的事件列表
 	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}
