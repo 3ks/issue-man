@@ -30,7 +30,7 @@ func Start(conf config.Config) {
 	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}
 
 	// 定时任务
-	go job(*conf)
+	go job()
 
 	// 定义监听路由
 	router := gin.Default()

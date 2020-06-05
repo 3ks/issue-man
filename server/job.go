@@ -12,7 +12,7 @@ import (
 // 目前主要完成状态持续时间的检测，并提醒
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
 //      每天定时检测，满足相关条件时，则执行一些操作
-func job(conf config.Config2) {
+func job() {
 	fmt.Printf("loaded jobs: %#v\n", global.Jobs)
 	// 无任务
 	if len(global.Jobs) == 0 {
@@ -62,3 +62,7 @@ func job(conf config.Config2) {
 		time.Sleep(s)
 	}
 }
+
+// 521
+// 21
+// 1
