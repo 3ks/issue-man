@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/go-playground/webhooks.v5/github"
+	"issue-man/global"
 	"issue-man/operation"
 	"net/http"
 )
@@ -21,10 +22,11 @@ func handler(c *gin.Context) {
 	switch p.(type) {
 	case github.IssueCommentPayload:
 		issueComment(p.(github.IssueCommentPayload))
-	case github.PullRequestPayload:
-	// todo
+	case github.OrganizationPayload:
+		org(p.(github.OrganizationPayload))
+	case github.MembershipPayload:
+		team(p.(github.MembershipPayload))
 	default:
-		// todo
 	}
 
 	c.String(http.StatusOK, "")
@@ -32,7 +34,7 @@ func handler(c *gin.Context) {
 
 func issueComment(payload github.IssueCommentPayload) {
 	// 不处理未知 repository 的事件
-	if payload.Repository.FullName != fullName {
+	if payload.Repository.FullName != global.Conf.Repository.Spec.Workspace.GetFullName() {
 		return
 	}
 
@@ -49,4 +51,19 @@ func issueComment(payload github.IssueCommentPayload) {
 
 	// 执行指令
 	operation.IssueHanding(payload, is)
+}
+
+// 维护团队成员变化情况
+func team(payload github.MembershipPayload) {
+	if payload.Team.Name == *global.Conf.Repository.Spec.MaintainerTeam {
+		global.LoadMaintainers()
+	}
+}
+
+// 维护组织成员变化情况
+func org(payload github.OrganizationPayload) {
+	switch payload.Action {
+	case "member_added", "member_removed":
+		global.LoadMembers()
+	}
 }

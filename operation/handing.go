@@ -9,13 +9,15 @@ import (
 // is 是一个指令 map，其中：
 // key 为指令名
 // value 为提及人员，可能为空
-func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
-	for k, v := range is {
-		if _, ok := global.Instructions[k]; ok {
-			do(k, v, payload)
-		} else {
-			fmt.Printf("unkown instruction: %s, mention: %#v\n", k, v)
+func IssueHanding(payload github.IssueCommentPayload, instructs map[string][]string) {
+	for instruct, mention := range instructs {
+		if _, ok := global.Instructions[instruct]; !ok {
+			global.Sugar.Errorw("unknown instruction",
+				"instruction", instruct,
+				"mention", mention)
+			continue
 		}
+		do(instruct, mention, payload)
 	}
 }
 
@@ -29,54 +31,78 @@ func IssueHanding(payload github.IssueCommentPayload, is map[string][]string) {
 //-----------------------------------------
 // 在检查过程中，随时可能会 comment，并 return
 // 这取决于 issue 的实际情况和流程定义
-func do(ins string, mention []string, payload github.IssueCommentPayload) {
+func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	// 基本信息
 	info := GetInfo(payload)
 	info.Mention = mention
-	flow := global.Instructions[ins]
+	flow := global.Instructions[instruct]
 
-	fmt.Printf("do: %s, mention: %#v, info: %#v\n", ins, mention, info)
+	global.Sugar.Debugw("do instruct",
+		"req_id", info.ReqID,
+		"instruct", instruct,
+		"mention", mention,
+		"info", info)
 
 	// 权限检查
-	if !CheckPermission(flow.Permission, info) {
-		fmt.Printf("check permission fail. require: %v\n", flow.Permission)
-		if flow.PermissionFeedback == "" {
+	if !CheckPermission(flow.Spec.Rules.Permissions, info) {
+		global.Sugar.Infow("do instruct",
+			"req_id", info.ReqID,
+			"step", "CheckPermission",
+			"status", "fail",
+			"info", info,
+			"require", flow.Spec.Rules.Permissions)
+		if flow.Spec.Rules.PermissionFeedback == nil {
 			return
 		}
-		hc := Comment{}
-		hc.Login = info.Login
-		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
+		hc := Comment{
+			Login: info.Login,
+			ReqID: info.ReqID,
+		}
+		IssueComment(info, hc.HandComment(*flow.Spec.Rules.PermissionFeedback))
 		return
 	}
 
 	// 标签（状态）检查
-	if !CheckLabel(info.Labels, flow.CurrentLabel) {
-		fmt.Printf("check label fail. require: %v\n", flow.CurrentLabel)
-		if flow.FailFeedback == "" {
+	if !CheckLabel(flow.Spec.Rules.Labels, info.Labels) {
+		global.Sugar.Infow("do instruct",
+			"req_id", info.ReqID,
+			"step", "CheckLabel",
+			"status", "fail",
+			"info", info,
+			"require", flow.Spec.Rules.Labels)
+		if flow.Spec.Rules.LabelFeedback == nil {
 			return
 		}
-		hc := Comment{}
-		hc.Login = info.Login
-		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
+		hc := Comment{
+			Login: info.Login,
+			ReqID: info.ReqID,
+		}
+		IssueComment(info, hc.HandComment(*flow.Spec.Rules.LabelFeedback))
 		return
 	}
 
 	// 数量检查
-	if !CheckCount(info, flow.TargetLabel, flow.TargetLimit) {
+	if !CheckCount(info, flow.Spec.Action) {
 		fmt.Printf("check count fail. require: %v\n", flow.TargetLimit)
-		if flow.LimitFeedback == "" {
+		global.Sugar.Infow("do instruct",
+			"req_id", info.ReqID,
+			"step", "CheckCount",
+			"status", "fail",
+			"requireCount", flow.Spec.Action.AddLabelsLimit)
+		if flow.Spec.Action.LabelLimitFeedback == nil {
 			return
 		}
-		hc := Comment{}
-		hc.Login = info.Login
-		hc.Count = flow.TargetLimit
-		IssueComment(info, hc.HandComment(flow.PermissionFeedback))
+		hc := Comment{
+			Login: info.Login,
+			ReqID: info.ReqID,
+		}
+		IssueComment(info, hc.HandComment(*flow.Spec.Action.LabelLimitFeedback))
 		return
 	}
 
 	// 发送 Update Issue 请求（如果有的话）
-	IssueEdit(info, flow)
+	IssueEdit(info, *flow)
 
 	// 发送 Move Card 请求（如果有的话）
-	CardMove(info, flow)
+	//CardMove(info, flow)
 }

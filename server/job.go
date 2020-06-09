@@ -12,6 +12,13 @@ import (
 // 目前主要完成状态持续时间的检测，并提醒
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
 //      每天定时检测，满足相关条件时，则执行一些操作
+//
+// TODO 检测频率
+// 1. 获取所有特定 label 的 issue
+// 2. 获取存储 commit 的 issue
+// 3. 遍历 commit，存储到栈内，直至第二步匹配的 commit。
+// 4. pop commit 栈，分析涉及的文件，是否存在匹配的 issue
+// 5. 对匹配的 issue，comment 提示，该 issue 对应的某个文件在哪次 commit 有变动
 func job() {
 	fmt.Printf("loaded jobs: %#v\n", global.Jobs)
 	// 无任务

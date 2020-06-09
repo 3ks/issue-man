@@ -8,28 +8,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/config"
+	"issue-man/global"
 	"log"
 	"net/http"
 )
 
 var (
-	// 仓库的完整名
-	fullName string
-
 	// 解析的事件列表
-	// todo 配置化
 	events []github.Event
 )
 
 // TODO 定期检查同步状态。
 func Start(conf config.Config) {
-
-	fullName = conf.Repository.Spec.Workspace.GetFullName()
-
 	// 初始化处理的事件列表
-	events = []github.Event{github.IssueCommentEvent, github.PullRequestEvent}
+	events = []github.Event{
+		github.IssueCommentEvent,
+		github.MembershipEvent,
+		github.OrganizationEvent,
+	}
 
-	// 定时任务
+	// 定时检测任务
 	go job()
 
 	// 定义监听路由
@@ -40,12 +38,11 @@ func Start(conf config.Config) {
 	v1.POST("/service-mesher/", handler)
 
 	srv := &http.Server{
-		Addr:    conf.Port,
+		Addr:    *global.Conf.Repository.Spec.Port,
 		Handler: router,
 	}
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("listen: %s\n", err)
 	}
-
 }

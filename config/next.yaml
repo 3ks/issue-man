@@ -51,7 +51,7 @@ spec:
   rules:
     instruct: "accept"
     labels:
-    - "status/welcome"
+    - "status/accept"
     permision:
     - "@maintainer"
     - "@member"

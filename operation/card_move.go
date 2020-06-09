@@ -16,7 +16,7 @@ const (
 
 // 移动 issue 对应的 card（如果有的的话）
 // todo 目前只能移动已存在的 card，没有添加的功能
-func CardMove(info Info, flow config.Flow) {
+func CardMove(info Info, flow config.Config) {
 	// 当前无 CurrentColumnID，不做操作
 	if flow.CurrentColumnID == 0 {
 		return

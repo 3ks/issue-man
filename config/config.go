@@ -97,22 +97,26 @@ type IssueComment struct {
 
 // 条件
 type Rule struct {
-	Instruct    *string   `yaml:"instruct"`
-	Permissions []*string `yaml:"permissions"`
-	Labels      []*string `yaml:"labels"`
-	Assigners   []*string `yaml:"assigners"`
+	Instruct           *string   `yaml:"instruct"`
+	Permissions        []*string `yaml:"permissions"`
+	PermissionFeedback *string   `yaml:"permissionFeedback"`
+	Labels             []*string `yaml:"labels"`
+	LabelFeedback      *string   `yaml:"labelFeedback"`
+	Assigners          []*string `yaml:"assigners"`
+	AssignerFeedback   *string   `yaml:"assignerFeedback"`
 }
 
 // 动作
 type Action struct {
-	AddLabels       []*string `yaml:"addLabels"`
-	AddLabelsLimit  *int      `yaml:"addLabelsLimit"`
-	RemoveLabels    []*string `yaml:"removeLabels"`
-	AddAssigners    []*string `yaml:"addAssigners"`
-	RemoveAssigners []*string `yaml:"removeAssigners"`
-	State           *string   `json:"state"`
-	SuccessFeedback *string   `yaml:"successFeedback"`
-	FailFeedback    *string   `yaml:"failFeedback"`
+	AddLabels          []*string `yaml:"addLabels"`
+	AddLabelsLimit     *int      `yaml:"addLabelsLimit"`
+	LabelLimitFeedback *string   `json:"labelLimitFeedback"`
+	RemoveLabels       []*string `yaml:"removeLabels"`
+	AddAssigners       []*string `yaml:"addAssigners"`
+	RemoveAssigners    []*string `yaml:"removeAssigners"`
+	State              *string   `yaml:"state"`
+	SuccessFeedback    *string   `yaml:"successFeedback"`
+	FailFeedback       *string   `yaml:"failFeedback"`
 }
 
 // Job 定时任务相关的配置

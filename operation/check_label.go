@@ -5,14 +5,14 @@ package operation
 // 即检测，当前状态是否是期望的状态。
 // 返回值为 true，则表示通过检测。
 // 反之则表示未通过检测
-func CheckLabel(now, require []string) bool {
+func CheckLabel(require []*string, now []string) bool {
 	m := make(map[string]bool)
 	for _, v := range now {
 		m[v] = true
 	}
 
 	for _, v := range require {
-		if !m[v] {
+		if !m[*v] {
 			return false
 		}
 	}

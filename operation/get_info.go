@@ -1,8 +1,9 @@
 package operation
 
 import (
-	"fmt"
+	"github.com/google/uuid"
 	"gopkg.in/go-playground/webhooks.v5/github"
+	"issue-man/global"
 	"strings"
 )
 
@@ -27,6 +28,9 @@ type Info struct {
 	State       string
 	Assignees   []string
 	Labels      []string
+
+	// 一个指令的 UUID
+	ReqID string
 }
 
 // 从 IssueCommentPayload 里的一些信息
@@ -34,9 +38,12 @@ type Info struct {
 func GetInfo(payload github.IssueCommentPayload) (info Info) {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Printf("get_info_panic: %#v", p)
+			global.Sugar.Errorw("GetInfo panic",
+				"req_id", info.ReqID,
+				"panic", p)
 		}
 	}()
+	info.ReqID = uuid.New().String()
 	ss := strings.SplitN(payload.Repository.FullName, "/", -1)
 	info.Owner = ss[0]
 	info.Repository = ss[1]
