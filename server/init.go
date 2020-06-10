@@ -293,10 +293,22 @@ func parseTitleFromPath(p string) (title *string) {
 	return
 }
 
+// parseURLFormPath
+// 根据 PATH 生产 istio.io 的 URL
+func parseURLFormPath(p string) (en, zh string) {
+	t := strings.Split(p, "/")
+	tmp := strings.Join(t[:len(t)-1], "/")
+	en = fmt.Sprintf("https://istio.io/docs%s", tmp)
+	zh = fmt.Sprintf("https://istio.io/zh/docs%s", tmp)
+
+	return
+}
+
 // genBody 根据文件名和旧的 body，生成新的 body
 func genBody(file, oldBody string) (body *string) {
 	t := ""
 	body = &t
+	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
 
 	// map 存储去重
 	files := make(map[string]string)
@@ -319,14 +331,15 @@ func genBody(file, oldBody string) (body *string) {
 		return fs[i] < fs[j]
 	})
 
+	en, zh := parseURLFormPath(file)
 	// 构造 body
 	bf := bytes.Buffer{}
-	bf.WriteString("# EN Files\n\n")
+	bf.WriteString(fmt.Sprintf("## EN\n\n#### URL\n\n%s#### Files\n\n", en))
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", v))
 	}
 
-	bf.WriteString("# ZH Files\n\n")
+	bf.WriteString(fmt.Sprintf("\n## ZH\n\n#### URL\n\n%s#### Files\n\n", zh))
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", strings.ReplaceAll(v, "content/en", "content/zh")))
 	}

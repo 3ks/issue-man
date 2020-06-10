@@ -72,18 +72,18 @@ metadata:
   name: "issue-pushed"
 spec:
   rules:
-    instruct: "pushed"
+    instruct: "synced"
     labels:
-    - "status/waiting-for-pushed"
+    - "status/waiting-for-sync"
     permision:
     - "@maintainer"
     - "@assigner"
   action:
     addLabels:
     - "status/waiting-for-update"
-    - "status/waiting-for-update"
     removeLabels:
     - "status/waiting-for-pushed"
+    - "status/stale"
   feedback:
     success: "xxx"
     fail: "xxx"
@@ -190,3 +190,6 @@ spec:
 # todo 重构，减少 API 调用时机，提前将 issue 相关数据组合，让代码逻辑清晰一些。
 # 优化逻辑，并发
 # 日志
+#      accept                synced
+# pending/waiting-for-sync(stale)/synced/description
+#                      waive
