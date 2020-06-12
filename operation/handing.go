@@ -1,7 +1,6 @@
 package operation
 
 import (
-	"fmt"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/global"
 )
@@ -83,7 +82,6 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 
 	// 数量检查
 	if !CheckCount(info, flow.Spec.Action) {
-		fmt.Printf("check count fail. require: %v\n", flow.TargetLimit)
 		global.Sugar.Infow("do instruct",
 			"req_id", info.ReqID,
 			"step", "CheckCount",

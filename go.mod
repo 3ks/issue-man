@@ -12,4 +12,5 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be
 	gopkg.in/go-playground/webhooks.v5 v5.13.0
+	gopkg.in/yaml.v2 v2.2.8
 )

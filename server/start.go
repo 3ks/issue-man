@@ -1,6 +1,6 @@
 // start.go 对应 start 子命令的实现
 // start 实现的是：
-// 1. 启动 HTTP 服务，监听 Webhook 时间，响应任务仓库的指令。
+// 1. 启动 HTTP 服务，监听 Webhook 事件，响应任务仓库的指令。
 // 2. 定时检测上游仓库的更新，分析操作，根据规则对任务仓库的 issue 做出处理（新增，更新通知，删除）
 package server
 
