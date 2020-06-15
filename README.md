@@ -102,12 +102,9 @@ body:
   path: content/en/docs/tasks/traffic-management/traffic-shifting/index.md
 
 comment 模板
+maintainer：@assignees
 status: modified
 pr: 
-commit: 
-diff: https://github.com/istio/istio.io/commit/<commit_sha>#diff-<怎么得到？>
+diff：https://github.com/istio/istio.io/pull/<pr_number>/files#diff-<md5(filename)>
 
-怎么得到：先 GET 目标 PR 网页，根据 title 提取出 #herf -> 拼接 URL
-<a title="content/en/docs/tasks/traffic-management/traffic-shifting/snips.sh"
-class="link-gray-dark"
-href="#diff-7999b90bd19e931533e1a7f4c86c44f4">content/en/docs/tasks/traffic-management/traffic-shifting/snips.sh</a>
+diff: https://github.com/istio/istio.io/commit/<commit_sha>#diff-<md5(filename)> ???

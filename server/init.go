@@ -164,7 +164,7 @@ func genAndCreateIssues(fs map[string]string) {
 				// 根据 title 判断，如果已存在，则更新
 				exist := existIssues[*parseTitleFromPath(k)]
 				if exist != nil {
-					updates[*exist.Number] = updateIssue(*v, k, *exist)
+					updates[*exist.Number] = updateIssue(false, k, *exist)
 				} else {
 					// 不存在，则新建
 					creates[k] = newIssue(*v, k)
@@ -197,6 +197,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"err", err.Error())
 				return
 			}
+			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
 				global.Sugar.Errorw("init issues",
@@ -230,6 +231,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"err", err.Error())
 				return
 			}
+			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusCreated {
 				body, _ := ioutil.ReadAll(resp.Body)
 				global.Sugar.Errorw("init issues",
@@ -249,23 +251,47 @@ func genAndCreateIssues(fs map[string]string) {
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
-func updateIssue(include config.Include, file string, exist github.Issue) (update *github.IssueRequest) {
+func updateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
+	const (
+		CHECK = "status/need-check"
+	)
+
+	length := 0
 	update = &github.IssueRequest{}
 	update.Title = exist.Title
-	update.Body = genBody(false, file, *exist.Body)
+	update.Body, length = genBody(remove, file, *exist.Body)
 
 	// 对于已存在的 issue
 	// label、assignees、milestone 不会变化
 	update.Labels = convertLabel(exist.Labels)
 	update.Assignees = convertAssignees(exist.Assignees)
 	update.Milestone = exist.Milestone.Number
+
+	// 如果文件列表为 0，则添加特殊 label
+	// 反之则移除
+	if length == 0 {
+		tmp := append(*update.Labels, CHECK)
+		update.Labels = &tmp
+	} else {
+		index := 0
+		tmp := update.GetLabels()
+		for _, v := range tmp {
+			if v == CHECK {
+				continue
+			}
+			(*update.Labels)[index] = v
+			index++
+		}
+		tmp = tmp[:index]
+		update.Labels = &tmp
+	}
 	return
 }
 
 func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new = &github.IssueRequest{}
 	new.Title = parseTitleFromPath(file)
-	new.Body = genBody(false, file, "")
+	new.Body, _ = genBody(false, file, "")
 
 	// 创建新切片
 	labels := make([]string, len(*global.Conf.IssueCreate.Spec.Labels))
@@ -306,7 +332,7 @@ func parseURLFormPath(p string) (en, zh string) {
 }
 
 // genBody 根据文件名和旧的 body，生成新的 body
-func genBody(remove bool, file, oldBody string) (body *string) {
+func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	t := ""
 	body = &t
 	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
@@ -324,6 +350,7 @@ func genBody(remove bool, file, oldBody string) (body *string) {
 		delete(files, file)
 	}
 
+	length = len(files)
 	fs := make([]string, len(files))
 	// map 转 slice 以便排序
 	count := 0
@@ -339,12 +366,22 @@ func genBody(remove bool, file, oldBody string) (body *string) {
 	en, zh := parseURLFormPath(file)
 	// 构造 body
 	bf := bytes.Buffer{}
-	bf.WriteString(fmt.Sprintf("## EN\n\n#### URL\n\n%s#### Files\n\n", en))
+	// _index 类文件无统一页面
+	if strings.Contains(file, "_index") {
+		bf.WriteString(fmt.Sprintf("## EN\n\n#### Files\n\n"))
+	} else {
+		bf.WriteString(fmt.Sprintf("## EN\n\n#### URL\n\n%s#### Files\n\n", en))
+	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", v))
 	}
 
-	bf.WriteString(fmt.Sprintf("\n## ZH\n\n#### URL\n\n%s#### Files\n\n", zh))
+	// _index 类文件无统一页面
+	if strings.Contains(file, "_index") {
+		bf.WriteString(fmt.Sprintf("## ZH\n\n#### Files\n\n"))
+	} else {
+		bf.WriteString(fmt.Sprintf("## ZH\n\n#### URL\n\n%s#### Files\n\n", zh))
+	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", strings.ReplaceAll(v, "content/en", "content/zh")))
 	}
