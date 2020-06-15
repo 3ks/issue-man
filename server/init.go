@@ -162,7 +162,8 @@ func genAndCreateIssues(fs map[string]string) {
 			// 符合条件的文件
 			if v.OK(k) {
 				// 根据 title 判断，如果已存在，则更新
-				if exist := existIssues[*parseTitleFromPath(k)]; exist != nil {
+				exist := existIssues[*parseTitleFromPath(k)]
+				if exist != nil {
 					updates[*exist.Number] = updateIssue(*v, k, *exist)
 				} else {
 					// 不存在，则新建
@@ -251,7 +252,7 @@ func genAndCreateIssues(fs map[string]string) {
 func updateIssue(include config.Include, file string, exist github.Issue) (update *github.IssueRequest) {
 	update = &github.IssueRequest{}
 	update.Title = exist.Title
-	update.Body = genBody(file, *exist.Body)
+	update.Body = genBody(false, file, *exist.Body)
 
 	// 对于已存在的 issue
 	// label、assignees、milestone 不会变化
@@ -264,7 +265,7 @@ func updateIssue(include config.Include, file string, exist github.Issue) (updat
 func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new = &github.IssueRequest{}
 	new.Title = parseTitleFromPath(file)
-	new.Body = genBody(file, "")
+	new.Body = genBody(false, file, "")
 
 	// 创建新切片
 	labels := make([]string, len(*global.Conf.IssueCreate.Spec.Labels))
@@ -294,7 +295,7 @@ func parseTitleFromPath(p string) (title *string) {
 }
 
 // parseURLFormPath
-// 根据 PATH 生产 istio.io 的 URL
+// 根据 PATH 生成 istio.io 的 URL
 func parseURLFormPath(p string) (en, zh string) {
 	t := strings.Split(p, "/")
 	tmp := strings.Join(t[:len(t)-1], "/")
@@ -305,7 +306,7 @@ func parseURLFormPath(p string) (en, zh string) {
 }
 
 // genBody 根据文件名和旧的 body，生成新的 body
-func genBody(file, oldBody string) (body *string) {
+func genBody(remove bool, file, oldBody string) (body *string) {
 	t := ""
 	body = &t
 	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
@@ -317,6 +318,10 @@ func genBody(file, oldBody string) (body *string) {
 		if strings.Contains(v, "content/en/") {
 			files[v] = v
 		}
+	}
+	// 用于移除某个文件的情况
+	if remove {
+		delete(files, file)
 	}
 
 	fs := make([]string, len(files))

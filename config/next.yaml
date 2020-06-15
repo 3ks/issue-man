@@ -16,6 +16,7 @@ kind: "IssueCreate"
 metadata:
   name: "issue-create"
 spec:
+  detection_at: "09:00"
   labels:
   - "status/pending"
   - "kind/page"
@@ -155,23 +156,12 @@ spec:
 apiVersion: "v1"
 kind: "Job"
 metadata:
-  name: "sync"
-spec:
-  rules:
-    labels: # 逻辑或的关系
-      - "status/waiting-for-sync"
-      - "status/waiting-for-update"
----
-apiVersion: "v1"
-kind: "Job"
-metadata:
   name: "remind"
 spec:
   rules:
+    in: 30
     labels:
       - "status/waiting-for-update"
-    in: 30
-  action:
     addLabels:
       - "status/stale"
 

@@ -34,14 +34,13 @@ func (s Selector) GetFullName() string {
 type Repository struct {
 	Base
 	Spec struct {
-		Workspace Selector `yaml:"workspace"`
-		Upstream  Selector `yaml:"upstream"`
-		// TODO 手动创建一个特殊的 issue，用于存储 commit 指针。
-		CommitIssue    *int    `yaml:"commitIssue"`
-		MaintainerTeam *string `yaml:"maintainerTeam"`
-		Port           *string `yaml:"port"`
-		LogLevel       *string `yaml:"logLevel"`
-		Verbose        *bool   `yaml:"verbose"`
+		Workspace      Selector `yaml:"workspace"`
+		Upstream       Selector `yaml:"upstream"`
+		CommitIssue    *int     `yaml:"commitIssue"`
+		MaintainerTeam *string  `yaml:"maintainerTeam"`
+		Port           *string  `yaml:"port"`
+		LogLevel       *string  `yaml:"logLevel"`
+		Verbose        *bool    `yaml:"verbose"`
 	} `yaml:"spec"`
 }
 
@@ -49,11 +48,12 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		Labels    *[]string  `yaml:"labels"`
-		Assignees *[]string  `yaml:"assignees"`
-		Milestone *int       `yaml:"milestone"`
-		Content   *string    `yaml:"content"`
-		Includes  []*Include `yaml:"includes"`
+		DetectionAt *string    `yaml:"detection_at"`
+		Labels      *[]string  `yaml:"labels"`
+		Assignees   *[]string  `yaml:"assignees"`
+		Milestone   *int       `yaml:"milestone"`
+		Content     *string    `yaml:"content"`
+		Includes    []*Include `yaml:"includes"`
 	} `yaml:"spec"`
 }
 
@@ -125,8 +125,9 @@ type Action struct {
 type Job struct {
 	Base
 	Spec struct {
-		// TODO
-		//Rules  *Option `yaml:"rules"`
-		//Action *Option `yaml:"action"`
+		In           *int      `yaml:"in"`
+		Labels       []*string `yaml:"labels"`
+		AddLabels    []*string `yaml:"addLabels"`
+		RemoveLabels []*string `yaml:"removeLabels"`
 	} `yaml:"spec"`
 }
