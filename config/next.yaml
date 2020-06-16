@@ -162,7 +162,7 @@ spec:
     - "status/waiting-for-sync"
     addLabels:
     - "status/stale"
-
+---
 # 根据对象的属性进行操作和判断。
 #
 # comment 相关的一些特殊字符

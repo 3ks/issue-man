@@ -14,8 +14,8 @@ import (
 // 返回值为 true，则表示通过检测。
 // 反之则表示未通过检测
 func CheckCount(info Info, action *config.Action) bool {
-	// nil 或 0 表示无限制
-	if action.AddLabelsLimit == nil || *action.AddLabelsLimit <= 0 {
+	// 小于等于 0 为无限制
+	if action.AddLabelsLimit <= 0 {
 		return true
 	}
 	// 根据用户及 label 筛选
@@ -23,7 +23,7 @@ func CheckCount(info Info, action *config.Action) bool {
 	req.Assignee = info.Login
 
 	for _, v := range action.AddLabels {
-		req.Labels = append(req.Labels, *v)
+		req.Labels = append(req.Labels, v)
 	}
 
 	is, resp, err := global.Client.Issues.ListByRepo(context.TODO(), info.Owner, info.Repository, req)
@@ -52,7 +52,7 @@ func CheckCount(info Info, action *config.Action) bool {
 	}
 
 	// 不超过 limit 限制
-	if len(is) < *action.AddLabelsLimit {
+	if len(is) <= action.AddLabelsLimit {
 		return true
 	}
 	return false

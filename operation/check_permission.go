@@ -17,7 +17,7 @@ const (
 // 反之则表示未通过检测。
 // 检查流程是，先检测配置文件是否配置了改项，如果配置了，用户是否满足该项的条件。
 // 满足任一一个条件，则视为有权限。
-func CheckPermission(permission []*string, info Info) bool {
+func CheckPermission(permission []string, info Info) bool {
 	// 未配置任何权限，则不允许操作
 	if len(permission) == 0 {
 		return false
@@ -26,7 +26,7 @@ func CheckPermission(permission []*string, info Info) bool {
 	// 要求的权限 map
 	ps := make(map[string]bool)
 	for _, v := range permission {
-		ps[*v] = true
+		ps[v] = true
 	}
 
 	// 当前的 assignees map

@@ -50,14 +50,14 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"status", "fail",
 			"info", info,
 			"require", flow.Spec.Rules.Permissions)
-		if flow.Spec.Rules.PermissionFeedback == nil {
+		if flow.Spec.Rules.PermissionFeedback == "" {
 			return
 		}
 		hc := Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(*flow.Spec.Rules.PermissionFeedback))
+		IssueComment(info, hc.HandComment(flow.Spec.Rules.PermissionFeedback))
 		return
 	}
 
@@ -69,14 +69,14 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"status", "fail",
 			"info", info,
 			"require", flow.Spec.Rules.Labels)
-		if flow.Spec.Rules.LabelFeedback == nil {
+		if flow.Spec.Rules.LabelFeedback == "" {
 			return
 		}
 		hc := Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(*flow.Spec.Rules.LabelFeedback))
+		IssueComment(info, hc.HandComment(flow.Spec.Rules.LabelFeedback))
 		return
 	}
 
@@ -87,19 +87,19 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"step", "CheckCount",
 			"status", "fail",
 			"requireCount", flow.Spec.Action.AddLabelsLimit)
-		if flow.Spec.Action.LabelLimitFeedback == nil {
+		if flow.Spec.Action.LabelLimitFeedback == "" {
 			return
 		}
 		hc := Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(*flow.Spec.Action.LabelLimitFeedback))
+		IssueComment(info, hc.HandComment(flow.Spec.Action.LabelLimitFeedback))
 		return
 	}
 
 	// 发送 Update Issue 请求（如果有的话）
-	IssueEdit(info, *flow)
+	IssueEdit(info, flow)
 
 	// 发送 Move Card 请求（如果有的话）
 	//CardMove(info, flow)

@@ -68,7 +68,7 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	files = make(map[string]string)
 	for _, v := range ts.Entries {
 		// 目标目录下的文件
-		if strings.HasPrefix(*v.Type, *c.IssueCreate.Spec.Content) && *v.Type == "blob" {
+		if strings.HasPrefix(*v.Type, c.IssueCreate.Spec.Content) && *v.Type == "blob" {
 			// 仅处理 md 和 html 文件
 			if path.Ext(*v.Path) == ".md" || path.Ext(*v.Path) == ".html" {
 				// key path
@@ -87,7 +87,7 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 		"step", "start")
 	opt := &github.IssueListByRepoOptions{}
 	// 仅根据 kind 类型的 label 筛选 issue
-	for _, v := range *c.IssueCreate.Spec.Labels {
+	for _, v := range c.IssueCreate.Spec.Labels {
 		if strings.HasPrefix(v, "kind/") {
 			opt.Labels = append(opt.Labels, v)
 		}
@@ -167,7 +167,7 @@ func genAndCreateIssues(fs map[string]string) {
 					updates[*exist.Number] = updateIssue(false, k, *exist)
 				} else {
 					// 不存在，则新建
-					creates[k] = newIssue(*v, k)
+					creates[k] = newIssue(v, k)
 				}
 				// 文件已处理，break 内层循环
 				break
@@ -294,14 +294,22 @@ func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new.Body, _ = genBody(false, file, "")
 
 	// 创建新切片
-	labels := make([]string, len(*global.Conf.IssueCreate.Spec.Labels))
-	copy(labels, *global.Conf.IssueCreate.Spec.Labels)
-	labels = append(labels, *include.Labels...)
 
+	labels := append(*copySlice(global.Conf.IssueCreate.Spec.Labels), include.Labels...)
 	new.Labels = &labels
-	new.Assignees = global.Conf.IssueCreate.Spec.Assignees
-	new.Milestone = global.Conf.IssueCreate.Spec.Milestone
+	new.Assignees = copySlice(global.Conf.IssueCreate.Spec.Assignees)
+	new.Milestone = copyInt(global.Conf.IssueCreate.Spec.Milestone)
 	return
+}
+
+func copySlice(src []string) *[]string {
+	dst := make([]string, len(src))
+	copy(dst, src)
+	return &dst
+}
+
+func copyInt(src int) *int {
+	return &src
 }
 
 // parseTitleFromPath 解析路径，生成 title

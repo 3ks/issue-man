@@ -31,7 +31,7 @@ func job() {
 	global.Sugar.Info("loaded jobs", "list", global.Jobs)
 	// 解析检测时间
 	t, err := time.ParseInLocation("2006-01-02 15:04",
-		time.Now().Format("2006-01-02 ")+*global.Conf.IssueCreate.Spec.DetectionAt,
+		time.Now().Format("2006-01-02 ")+global.Conf.IssueCreate.Spec.DetectionAt,
 		time.Local)
 	if err != nil {
 		global.Sugar.Errorw("parse detection time",
@@ -111,12 +111,12 @@ func syncIssues() {
 					// 应该是一个移动文件操作
 					if file.cf.PreviousFilename != nil {
 						file.Sync(
-							*include,
+							include,
 							existIssues[*parseTitleFromPath(*file.cf.Filename)],
 							existIssues[*parseTitleFromPath(*file.cf.PreviousFilename)])
 					} else {
 						file.Sync(
-							*include,
+							include,
 							existIssues[*parseTitleFromPath(*file.cf.Filename)],
 							nil)
 					}
@@ -456,7 +456,7 @@ func getCommitIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		*global.Conf.Repository.Spec.CommitIssue,
+		global.Conf.Repository.Spec.CommitIssue,
 	)
 	if err != nil {
 		global.Sugar.Errorw("load commit issue",

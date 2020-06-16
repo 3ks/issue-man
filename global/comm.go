@@ -39,10 +39,10 @@ var (
 	// 支持哪些指令，取决于配置文件内容
 	// Flow 的工作流程，取决于配置文件内容
 	// Flow 的行为及处理逻辑，取决于配置文件
-	Instructions = make(map[string]*config.IssueComment)
+	Instructions = make(map[string]config.IssueComment)
 
 	// 需要执行的任务列表
-	Jobs = make(map[string]*config.Job)
+	Jobs = make(map[string]config.Job)
 )
 
 // 根据配置初始化一些内容。
@@ -50,7 +50,7 @@ var (
 func Init(token string, conf *config.Config) {
 	Conf = conf
 	// 生产环境日志
-	if *Conf.Repository.Spec.LogLevel == "pro" {
+	if Conf.Repository.Spec.LogLevel == "pro" {
 		logger, err := zap.NewProduction()
 		if err != nil {
 			panic(err.Error())
@@ -76,13 +76,14 @@ func Init(token string, conf *config.Config) {
 
 	// 从配置文件读取 Job 列表
 	for _, v := range Conf.Jobs {
-		if v.Spec.In == nil || *v.Spec.In < 0 {
+		// 忽略小于 0 的 job
+		if v.Spec.In < 0 {
 			continue
 		}
 		Jobs[v.Metadata.Name] = v
 	}
 	Sugar.Infow("load jobs",
-		"done", Instructions)
+		"done", Jobs)
 
 	// 初始化 GitHub Client
 	ts := oauth2.StaticTokenSource(

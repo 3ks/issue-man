@@ -65,8 +65,8 @@ func loadAndInit() config.Config {
 
 	// 读取配置文件
 	conf = &config.Config{}
-	conf.IssueComments = make([]*config.IssueComment, 0)
-	conf.Jobs = make([]*config.Job, 0)
+	conf.IssueComments = make([]config.IssueComment, 0)
+	conf.Jobs = make([]config.Job, 0)
 
 	// 读取配置文件
 	data, err := afero.ReadFile(afero.NewOsFs(), c)
@@ -80,52 +80,52 @@ func loadAndInit() config.Config {
 
 	// 遍历读取
 	for _, v := range cfgs {
-		b := &config.Base{}
-		err := yaml.Unmarshal([]byte(v), b)
+		base := config.Base{}
+		err := yaml.Unmarshal([]byte(v), &base)
 		if err != nil {
 			panic(err.Error())
 		}
 
-		switch b.Kind {
+		switch base.Kind {
 		// Repository 的配置
 		case "Repository":
-			tmp := &config.Repository{}
-			err = yaml.Unmarshal([]byte(v), tmp)
+			tmp := config.Repository{}
+			err = yaml.Unmarshal([]byte(v), &tmp)
 			if err != nil {
 				panic(err.Error())
 			}
-			tmp.Base = *b
+			//tmp.Base = base
 			conf.Repository = tmp
 		// IssueCreate 的配置
 		case "IssueCreate":
-			tmp := &config.IssueCreate{}
-			err = yaml.Unmarshal([]byte(v), tmp)
+			tmp := config.IssueCreate{}
+			err = yaml.Unmarshal([]byte(v), &tmp)
 			if err != nil {
 				panic(err.Error())
 			}
-			tmp.Base = *b
+			//tmp.Base = base
 			conf.IssueCreate = tmp
 		// IssueComment 的配置
 		case "IssueComment":
-			tmp := &config.IssueComment{}
-			err = yaml.Unmarshal([]byte(v), tmp)
+			tmp := config.IssueComment{}
+			err = yaml.Unmarshal([]byte(v), &tmp)
 			if err != nil {
 				panic(err.Error())
 			}
-			tmp.Base = *b
+			//tmp.Base = base
 			conf.IssueComments = append(conf.IssueComments, tmp)
 		// Job 的配置
 		case "Job":
-			tmp := &config.Job{}
-			err = yaml.Unmarshal([]byte(v), tmp)
+			tmp := config.Job{}
+			err = yaml.Unmarshal([]byte(v), &tmp)
 			if err != nil {
 				panic(err.Error())
 			}
-			tmp.Base = *b
+			//tmp.Base = base
 			conf.Jobs = append(conf.Jobs, tmp)
 		// 不支持类型的配置
 		default:
-			fmt.Printf("Unsupport Type: %s\n", b.Kind)
+			fmt.Printf("Unsupport Type: %s\n", base.Kind)
 		}
 	}
 

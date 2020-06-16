@@ -38,7 +38,7 @@ func Start(conf config.Config) {
 	v1.POST("/service-mesher/", handler)
 
 	srv := &http.Server{
-		Addr:    *global.Conf.Repository.Spec.Port,
+		Addr:    global.Conf.Repository.Spec.Port,
 		Handler: router,
 	}
 

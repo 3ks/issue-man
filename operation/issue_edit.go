@@ -30,7 +30,7 @@ func IssueEdit(info Info, flow config.IssueComment) {
 
 	closeIssue := IssueOpen
 	// 是否关闭 issue
-	if flow.Spec.Action.State != nil && *flow.Spec.Action.State == IssueClosed {
+	if flow.Spec.Action.State == IssueClosed {
 		closeIssue = IssueClosed
 	}
 	req.State = &closeIssue
@@ -66,7 +66,7 @@ func IssueEdit(info Info, flow config.IssueComment) {
 	}
 
 	// 创建文本提示
-	if flow.Spec.Action.SuccessFeedback != nil {
+	if flow.Spec.Action.SuccessFeedback != "" {
 		hc := Comment{}
 		hc.Login = info.Login
 		// 这可能是一个修改重置时间的指令，解析其重置时间
@@ -80,7 +80,7 @@ func IssueEdit(info Info, flow config.IssueComment) {
 		//		hc.ResetDate = resetDate.In(time.Local).Format("2006-01-02")
 		//	}
 		//}
-		IssueComment(info, hc.HandComment(*flow.Spec.Action.SuccessFeedback))
+		IssueComment(info, hc.HandComment(flow.Spec.Action.SuccessFeedback))
 	}
 }
 
@@ -89,14 +89,14 @@ func updateLabel(req *gg.IssueRequest, info Info, flow config.IssueComment) {
 	// 需要移除的 label
 	remove := make(map[string]bool)
 	for _, v := range flow.Spec.Action.RemoveLabels {
-		remove[*v] = true
+		remove[v] = true
 	}
 
 	// 添加下一阶段的 label
 	labels := make([]string, 0)
 	// target label 总是会直接添加
 	for _, v := range flow.Spec.Action.AddLabels {
-		labels = append(labels, *v)
+		labels = append(labels, v)
 	}
 
 	// 遍历目前存在的 label
@@ -134,7 +134,7 @@ func updateAssign(req *gg.IssueRequest, info Info, flow config.IssueComment) {
 
 	// 添加的 assigner
 	for _, v := range flow.Spec.Action.AddAssigners {
-		switch *v {
+		switch v {
 		case AsCommenter:
 			assign[info.Login] = true
 		case AsMention:
@@ -150,7 +150,7 @@ func updateAssign(req *gg.IssueRequest, info Info, flow config.IssueComment) {
 
 	// 移除的 assigner
 	for _, v := range flow.Spec.Action.RemoveAssigners {
-		switch *v {
+		switch v {
 		case AsCommenter:
 			info.Assignees = append(info.Assignees, info.Login)
 			delete(assign, info.Login)
