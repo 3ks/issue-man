@@ -14,7 +14,7 @@ var (
 func init() {
 	// destroy
 	destroyCmd = &cobra.Command{
-		Use:   "start",
+		Use:   "destroy",
 		Short: "清空仓库内容。",
 		Long:  `根据规则，清空任务仓库的内容。`,
 		Run: func(cmd *cobra.Command, args []string) {

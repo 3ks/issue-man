@@ -14,7 +14,7 @@ type Config struct {
 }
 
 type Base struct {
-	ApiVersion string `yaml:"api_version"`
+	ApiVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
 	Metadata   struct {
 		Name string `yaml:"name"`

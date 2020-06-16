@@ -15,7 +15,7 @@ var (
 func init() {
 	// init
 	initCmd = &cobra.Command{
-		Use:   "start",
+		Use:   "init",
 		Short: "初始化仓库内容。",
 		Long:  `根据上游仓库内容和规则，初始化任务仓库内容。`,
 		Run: func(cmd *cobra.Command, args []string) {

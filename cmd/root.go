@@ -79,44 +79,49 @@ func loadAndInit() config.Config {
 	cfgs := strings.Split(bf.String(), "---")
 
 	// 遍历读取
-	for i := 0; i < len(cfgs); i++ {
+	for _, v := range cfgs {
 		b := &config.Base{}
-		err := yaml.Unmarshal([]byte(cfgs[i]), b)
+		err := yaml.Unmarshal([]byte(v), b)
 		if err != nil {
 			panic(err.Error())
 		}
+
 		switch b.Kind {
 		// Repository 的配置
 		case "Repository":
 			tmp := &config.Repository{}
-			err = yaml.Unmarshal([]byte(cfgs[i]), tmp)
+			err = yaml.Unmarshal([]byte(v), tmp)
 			if err != nil {
 				panic(err.Error())
 			}
+			tmp.Base = *b
 			conf.Repository = tmp
 		// IssueCreate 的配置
 		case "IssueCreate":
 			tmp := &config.IssueCreate{}
-			err = yaml.Unmarshal([]byte(cfgs[i]), tmp)
+			err = yaml.Unmarshal([]byte(v), tmp)
 			if err != nil {
 				panic(err.Error())
 			}
+			tmp.Base = *b
 			conf.IssueCreate = tmp
 		// IssueComment 的配置
 		case "IssueComment":
 			tmp := &config.IssueComment{}
-			err = yaml.Unmarshal([]byte(cfgs[i]), tmp)
+			err = yaml.Unmarshal([]byte(v), tmp)
 			if err != nil {
 				panic(err.Error())
 			}
+			tmp.Base = *b
 			conf.IssueComments = append(conf.IssueComments, tmp)
 		// Job 的配置
 		case "Job":
 			tmp := &config.Job{}
-			err = yaml.Unmarshal([]byte(cfgs[i]), tmp)
+			err = yaml.Unmarshal([]byte(v), tmp)
 			if err != nil {
 				panic(err.Error())
 			}
+			tmp.Base = *b
 			conf.Jobs = append(conf.Jobs, tmp)
 		// 不支持类型的配置
 		default:

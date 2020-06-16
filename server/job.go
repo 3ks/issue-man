@@ -108,13 +108,14 @@ func syncIssues() {
 			for _, include := range global.Conf.IssueCreate.Spec.Includes {
 				// 符合条件的文件
 				if include.OK(*file.cf.Filename) {
+					// 应该是一个移动文件操作
 					if file.cf.PreviousFilename != nil {
-						syncIssue(file,
+						file.Sync(
 							*include,
 							existIssues[*parseTitleFromPath(*file.cf.Filename)],
 							existIssues[*parseTitleFromPath(*file.cf.PreviousFilename)])
 					} else {
-						syncIssue(file,
+						file.Sync(
 							*include,
 							existIssues[*parseTitleFromPath(*file.cf.Filename)],
 							nil)
@@ -126,38 +127,6 @@ func syncIssues() {
 		}(file)
 	}
 	wg.Wait()
-}
-
-// 根据 file 内容，同步 issue
-// 如果 issue 不存在，则创建
-// 如果前置 issue 不存在，则忽略
-func syncIssue(file File, include config.Include, issue, preIssue *github.Issue) {
-	// TODO 精确 diff
-	switch *file.cf.Status {
-	case "added", "modified":
-		// 已存在相应 issue，则更新 issue，并 comment
-		// 否则，创建 issue，不 comment
-
-	case "moved":
-		// 判断 title 是否有变化
-		//   有变化，
-		//  	更新（移除）原始 issue 中的这个文件
-		//      在新 issue 中添加该文件，并 comment
-		//   无变化，更新 issue，并 comment
-		// 更新（移除）原始 issue 中的这个文件
-		// 添加目的
-	// 对于移除的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
-	case "removed": //TODO 是这个关键字吗？
-
-	}
-
-	if err != nil {
-		global.Sugar.Errorw("get issues files",
-			"status", "fail",
-			"err", err.Error(),
-		)
-		return
-	}
 }
 
 type File struct {
@@ -187,21 +156,30 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 		}
 	// 移除文件
 	case REMOVE:
-		if preIssue != nil {
+		if existIssue != nil {
 			f.remove(existIssue)
+		} else {
+			global.Sugar.Warnw("remove exist file issue",
+				"status", "fail",
+				"file", f)
 		}
 	default:
-		global.Sugar.Errorw("unknown status",
+		global.Sugar.Warnw("unknown status",
 			"file", f,
 			"status", *f.cf.Status)
 	}
 
 	// 对于 moved 的文件，除了上面的操作，还有一个动作：
 	// 在之前的 issue 中移除这个文件
-	if *f.cf.Status == MOVE && preIssue != nil {
-		f.remove(preIssue)
+	if *f.cf.Status == MOVE {
+		if preIssue != nil {
+			f.remove(preIssue)
+		} else {
+			global.Sugar.Warnw("move pre file issue",
+				"status", "fail",
+				"file", f)
+		}
 	}
-
 }
 
 // 更新 issue，并 comment 如果 issue 不存在，则创建
@@ -294,7 +272,7 @@ func (f File) getFileHash() string {
 // 删除 issue 中的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
 func (f File) remove(preIssue *github.Issue) {
 	f.edit(
-		updateIssue(false, *f.cf.Filename, *preIssue),
+		updateIssue(true, *f.cf.Filename, *preIssue),
 		preIssue.GetNumber(),
 		"remove",
 	)

@@ -75,9 +75,8 @@ func Init(token string, conf *config.Config) {
 		"done", Instructions)
 
 	// 从配置文件读取 Job 列表
-	//
 	for _, v := range Conf.Jobs {
-		if v.Spec.Rules.In == nil || *v.Spec.Rules.In < 0 {
+		if v.Spec.In == nil || *v.Spec.In < 0 {
 			continue
 		}
 		Jobs[v.Metadata.Name] = v

@@ -1,15 +1,19 @@
 apiVersion: "v1"
 kind: "Repository"
 metadata:
-  name: "gorda.io"
+  name: "3ks.dev"
 spec:
-  selector:
-    owner: "gorda"
-    repository: "gorda.io"
-  maintainers:
-    - "aaa"
-    - "bbb"
-    - "ccc"
+  workspace:
+    owner: "1kib"
+    repository: "new"
+  upstream:
+    owner: "istio"
+    repository: "istio.io"
+  commitIssue: 1
+  maintainerTeam: "1mib"
+  port: ":80"
+  logLevel: "dev"
+  verbose: false
 ---
 apiVersion: "v1"
 kind: "IssueCreate"
@@ -21,7 +25,8 @@ spec:
   - "status/pending"
   - "kind/page"
   assignees:
-  - "gorda"
+  - "3ks"
+# milestone: 1
   content: "content/en/"
   includes: # 判断逻辑为包含，而不是前缀
 #  - path: "content/en/docs/reference/commands"
@@ -51,43 +56,73 @@ metadata:
 spec:
   rules:
     instruct: "accept"
-    labels:
-    - "status/accept"
     permision:
     - "@maintainer"
     - "@member"
+    permissionFeedback: "sorry"
+    labels:
+    - "status/pending"
+    labelFeedback: "sorry"
   action:
     addLabels:
-    - "status/waiting-for-pushed"
+    - "status/waiting-for-update"
+    addLabelsLimit: 10
+    labelLimitFeedback: "sorry"
     removeLabels:
     - "status/pending"
     addAssignees:
     - "@commenter"
-  feedback:
-    success: "xxx"
-    fail: "xxx"
+    successFeedback: "thank you"
+    failFeedback: "sorry"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
 metadata:
-  name: "issue-pushed"
+  name: "issue-sync"
 spec:
   rules:
     instruct: "synced"
-    labels:
-    - "status/waiting-for-sync"
     permision:
     - "@maintainer"
-    - "@assigner"
+    - "@member"
+    permissionFeedback: "sorry"
+    labels:
+    - "status/waiting-for-sync"
+    labelFeedback: "sorry"
   action:
     addLabels:
     - "status/waiting-for-update"
+    labelLimitFeedback: "sorry"
     removeLabels:
-    - "status/waiting-for-pushed"
+    - "status/waiting-for-sync"
     - "status/stale"
-  feedback:
-    success: "xxx"
-    fail: "xxx"
+    successFeedback: "thank you"
+    failFeedback: "sorry"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-wavier"
+spec:
+  rules:
+    instruct: "wavier"
+    permision:
+    - "@maintainer"
+    - "@member"
+    labels:
+    - "status/waiting-for-sync"
+    labelFeedback: "sorry"
+  action:
+    addLabels:
+    - "status/pending"
+    removeLabels:
+    - "status/waiting-for-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    removeAssigners:
+    - "@all"
+    successFeedback: "thank you"
+    failFeedback: "sorry"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -100,7 +135,7 @@ spec:
     - "@maintainer"
   action:
     addAssigneer:
-      - "@mention"
+    - "@mention"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -113,45 +148,8 @@ spec:
     - "@maintainer"
     - "@assigner" # 对于非 maintainer，仅能 unassign 评论者自己。
   action:
-    addLabels:
-      - "status/pending"
-    removeLabels:
-      - "status/waiting-for-pushed"
-      - "status/waiting-for-sync"
     removeAssigner:
-      - "@mention"
-  feedback:
-    success: "thanks your your work @mention"
----
-apiVersion: "v1"
-kind: "IssueComment"
-metadata:
-  name: "issue-pushed"
-spec:
-  labels:
-    - "status/accept"
-  limit: 10
-  assignees:
-    - "@commentator"
-  success: "thank you ..."
-  fail: "sorry ..."
-  projects:
-    id: 9527
-    column: 10086
-  # 条件
-  rules:
-    instruct: "accept"
-    permision:
-      - "@member"
-    assignees:
-      - "@commentator"
-    labels:
-      - "status/pending"
-    remove_labels:
-      - "status/stale" # /pushed 可移除的 label，但不要求必须存在
-    projects:
-      id: 9527
-      column: 10010
+    - "@mention"
 ---
 apiVersion: "v1"
 kind: "Job"
@@ -161,9 +159,9 @@ spec:
   rules:
     in: 30
     labels:
-      - "status/waiting-for-update"
+    - "status/waiting-for-sync"
     addLabels:
-      - "status/stale"
+    - "status/stale"
 
 # 根据对象的属性进行操作和判断。
 #

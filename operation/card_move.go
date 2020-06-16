@@ -1,5 +1,6 @@
 package operation
 
+/*
 import (
 	"context"
 	"fmt"
@@ -67,3 +68,4 @@ func CardMove(info Info, flow config.Config) {
 		}
 	}
 }
+*/

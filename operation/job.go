@@ -1,5 +1,6 @@
 package operation
 
+/*
 import (
 	"context"
 	"fmt"
@@ -402,3 +403,4 @@ func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, e
 
 	return issues, err
 }
+*/

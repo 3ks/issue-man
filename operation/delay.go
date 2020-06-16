@@ -1,5 +1,6 @@
 package operation
 
+/*
 import (
 	"fmt"
 	"time"
@@ -39,3 +40,4 @@ func getResetDate(owner, repository string, issueNumber int, labels []string, in
 		return delayDate, nil
 	}
 }
+*/
