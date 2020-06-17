@@ -94,7 +94,7 @@ func loadAndInit() config.Config {
 			if err != nil {
 				panic(err.Error())
 			}
-			//tmp.Base = base
+			tmp.Base = base
 			conf.Repository = tmp
 		// IssueCreate 的配置
 		case "IssueCreate":
@@ -103,7 +103,7 @@ func loadAndInit() config.Config {
 			if err != nil {
 				panic(err.Error())
 			}
-			//tmp.Base = base
+			tmp.Base = base
 			conf.IssueCreate = tmp
 		// IssueComment 的配置
 		case "IssueComment":
@@ -112,7 +112,7 @@ func loadAndInit() config.Config {
 			if err != nil {
 				panic(err.Error())
 			}
-			//tmp.Base = base
+			tmp.Base = base
 			conf.IssueComments = append(conf.IssueComments, tmp)
 		// Job 的配置
 		case "Job":
@@ -121,7 +121,7 @@ func loadAndInit() config.Config {
 			if err != nil {
 				panic(err.Error())
 			}
-			//tmp.Base = base
+			tmp.Base = base
 			conf.Jobs = append(conf.Jobs, tmp)
 		// 不支持类型的配置
 		default:

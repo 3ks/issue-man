@@ -28,26 +28,33 @@ spec:
   - "3ks"
 # milestone: 1
   content: "content/en/"
-  includes: # 判断逻辑为包含，而不是前缀
+  includes:
+# 判断逻辑为包含，而不是前缀
 #  - path: "content/en/docs/reference/commands"
 #    label: "priority/P0"
 #  - path: "content/en/docs/reference/config"
 #    label: "priority/P0"
   - path: "_index"
-    label: "priority/P0"
+    labels:
+    - "priority/P0"
   - path: "content/en/docs/"
-    label: "priority/P1"
+    labels:
+    - "priority/P1"
     exclude:
     - path: "content/en/docs/reference/commands"
     - path: "content/en/docs/reference/config"
   - path: "content/en/faq/"
-    label: "priority/P2"
+    labels:
+    - "priority/P2"
   - path: "content/en/blog/"
-    label: "priority/P3"
+    labels:
+    - "priority/P3"
   - path: "content/en/news/"
-    label: "priority/P3"
+    labels:
+    - "priority/P3"
   - path: "content/en/about/"
-    label: "priority/P4"
+    labels:
+    - "priority/P4"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -156,7 +163,6 @@ kind: "Job"
 metadata:
   name: "remind"
 spec:
-  rules:
     in: 30
     labels:
     - "status/waiting-for-sync"

@@ -74,6 +74,7 @@ func LoadMaintainers() {
 func LoadMembers() {
 	// 分页器
 	op := &github.ListMembersOptions{
+		PublicOnly: false,
 		ListOptions: github.ListOptions{
 			Page:    1,
 			PerPage: 100,
@@ -107,7 +108,7 @@ func LoadMembers() {
 		// 存储数据
 		Lock.Lock()
 		for k := range users {
-			Members[users[k].GetLogin()] = true
+			members[users[k].GetLogin()] = true
 		}
 		Lock.Unlock()
 
