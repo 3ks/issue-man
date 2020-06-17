@@ -25,7 +25,7 @@ func LoadMaintainers() {
 	for {
 		users, resp, err := Client.Teams.ListTeamMembersBySlug(context.Background(),
 			Conf.Repository.Spec.Workspace.Owner,
-			Conf.Repository.Spec.MaintainerTeam,
+			Conf.IssueCreate.Spec.MaintainerTeam,
 			op)
 		if err != nil {
 			Sugar.Errorw("load maintainer list",

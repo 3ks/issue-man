@@ -67,14 +67,9 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	}
 	files = make(map[string]string)
 	for _, v := range ts.Entries {
-		// 目标目录下的文件
-		if strings.HasPrefix(*v.Type, c.IssueCreate.Spec.Content) && *v.Type == "blob" {
-			// 仅处理 md 和 html 文件
-			if path.Ext(*v.Path) == ".md" || path.Ext(*v.Path) == ".html" {
-				// key path
-				// value path
-				files[*v.Path] = *v.Path
-			}
+		// 仅处理支持的文件类型
+		if v.GetType() == "blob" && c.IssueCreate.Need(v.GetPath()) {
+			files[*v.Path] = *v.Path
 		}
 	}
 	return files, nil
@@ -294,7 +289,6 @@ func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new.Body, _ = genBody(false, file, "")
 
 	// 创建新切片
-
 	labels := append(*copySlice(global.Conf.IssueCreate.Spec.Labels), include.Labels...)
 	new.Labels = &labels
 	new.Assignees = copySlice(global.Conf.IssueCreate.Spec.Assignees)
@@ -309,6 +303,9 @@ func copySlice(src []string) *[]string {
 }
 
 func copyInt(src int) *int {
+	if src == 0 {
+		return nil
+	}
 	return &src
 }
 
@@ -329,13 +326,12 @@ func parseTitleFromPath(p string) (title *string) {
 }
 
 // parseURLFormPath
-// 根据 PATH 生成 istio.io 的 URL
-func parseURLFormPath(p string) (en, zh string) {
+// 根据 PATH 生成站点的 URL
+func parseURLFormPath(p string) (source, translate string) {
 	t := strings.Split(p, "/")
-	tmp := strings.Join(t[:len(t)-1], "/")
-	en = fmt.Sprintf("https://istio.io/docs%s", tmp)
-	zh = fmt.Sprintf("https://istio.io/zh/docs%s", tmp)
-
+	tmp := strings.Join(t[1:len(t)-1], "/") // 去除两端路径,TODO 配置化？
+	source = fmt.Sprintf("https://%s/%s", global.Conf.Repository.Spec.Upstream.SourceSite, tmp)
+	translate = fmt.Sprintf("https://%s/%s", global.Conf.Repository.Spec.Upstream.TranslateSite, tmp)
 	return
 }
 
@@ -349,7 +345,7 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	files := make(map[string]string)
 	files[file] = file
 	for _, v := range strings.Split(oldBody, "\n") {
-		if strings.Contains(v, "content/en/") {
+		if strings.Contains(v, "content/source/") {
 			files[v] = v
 		}
 	}
@@ -371,27 +367,33 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 		return fs[i] < fs[j]
 	})
 
-	en, zh := parseURLFormPath(file)
+	source, translate := parseURLFormPath(file)
 	// 构造 body
 	bf := bytes.Buffer{}
 	// _index 类文件无统一页面
 	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## EN\n\n#### Files\n\n"))
+		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## EN\n\n#### URL\n\n%s#### Files\n\n", en))
+		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s#### Files\n\n", source))
 	}
 	for _, v := range fs {
-		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", v))
+		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
+			global.Conf.Repository.Spec.Upstream.Owner,
+			global.Conf.Repository.Spec.Upstream.Repository,
+			v))
 	}
 
 	// _index 类文件无统一页面
 	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## ZH\n\n#### Files\n\n"))
+		bf.WriteString(fmt.Sprintf("## Translate\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## ZH\n\n#### URL\n\n%s#### Files\n\n", zh))
+		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s#### Files\n\n", translate))
 	}
 	for _, v := range fs {
-		bf.WriteString(fmt.Sprintf("- https://github.com/istio/istio.io/tree/master/%s\n", strings.ReplaceAll(v, "content/en", "content/zh")))
+		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
+			global.Conf.Repository.Spec.Upstream.Owner,
+			global.Conf.Repository.Spec.Upstream.Repository,
+			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
 	}
 	t = bf.String()
 	return

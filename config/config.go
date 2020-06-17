@@ -24,8 +24,13 @@ type Base struct {
 type Selector struct {
 	Owner      string `yaml:"owner"`
 	Repository string `yaml:"repository"`
+	//SourceFile    string `yaml:"sourceFile"`    // TODO
+	//TranslateFile string `yaml:"translateFile"` // TODO
+	SourceSite    string `yaml:"sourceSite"`
+	TranslateSite string `yaml:"translateSite"`
 }
 
+// 拼装 owner 和 repository
 func (s Selector) GetFullName() string {
 	return fmt.Sprintf("%s/%s", s.Owner, s.Repository)
 }
@@ -34,13 +39,12 @@ func (s Selector) GetFullName() string {
 type Repository struct {
 	Base
 	Spec struct {
-		Workspace      Selector `yaml:"workspace"`
-		Upstream       Selector `yaml:"upstream"`
-		CommitIssue    int      `yaml:"commitIssue"`
-		MaintainerTeam string   `yaml:"maintainerTeam"`
-		Port           string   `yaml:"port"`
-		LogLevel       string   `yaml:"logLevel"`
-		Verbose        bool     `yaml:"verbose"`
+		Source    Selector `yaml:"upstream"`  // 源库
+		Translate Selector `yaml:"upstream"`  // 翻译库
+		Workspace Selector `yaml:"workspace"` // 工作库
+		Port      string   `yaml:"port"`
+		LogLevel  string   `yaml:"logLevel"`
+		Verbose   bool     `yaml:"verbose"`
 	} `yaml:"spec"`
 }
 
@@ -48,13 +52,33 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		DetectionAt string    `yaml:"detection_at"`
-		Labels      []string  `yaml:"labels"`
-		Assignees   []string  `yaml:"assignees"`
-		Milestone   int       `yaml:"milestone"`
-		Content     string    `yaml:"content"`
-		Includes    []Include `yaml:"includes"`
+		DetectionAt    string    `yaml:"detection_at"`
+		CommitIssue    int       `yaml:"commitIssue"`
+		MaintainerTeam string    `yaml:"maintainerTeam"`
+		FileType       []string  `yaml:"fileType"`
+		Labels         []string  `yaml:"labels"`
+		Assignees      []string  `yaml:"assignees"`
+		Milestone      int       `yaml:"milestone"`
+		Content        string    `yaml:"content"`
+		Includes       []Include `yaml:"includes"`
 	} `yaml:"spec"`
+}
+
+// 验证文件是否为需要处理的文件
+func (s IssueCreate) Need(file string) bool {
+	// 前缀不匹配
+	if !strings.HasPrefix(file, s.Spec.Content) {
+		return false
+	}
+
+	ext := strings.ReplaceAll(path.Ext(file), ".", "")
+	for _, v := range s.Spec.FileType {
+		// 后缀匹配
+		if v == ext {
+			return true
+		}
+	}
+	return false
 }
 
 type Include struct {

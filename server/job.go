@@ -456,7 +456,7 @@ func getCommitIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		global.Conf.Repository.Spec.CommitIssue,
+		global.Conf.IssueCreate.Spec.CommitIssue,
 	)
 	if err != nil {
 		global.Sugar.Errorw("load commit issue",

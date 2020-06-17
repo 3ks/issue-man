@@ -6,11 +6,12 @@ spec:
   workspace:
     owner: "1kib"
     repository: "new"
+    site: "istio.io/zh/docs"
   upstream:
     owner: "istio"
     repository: "istio.io"
-  commitIssue: 1
-  maintainerTeam: "1mib"
+    sourceSite: "istio.io/docs"
+    translateSite: "istio.io/zh/docs"
   port: ":80"
   logLevel: "dev"
   verbose: false
@@ -21,6 +22,11 @@ metadata:
   name: "issue-create"
 spec:
   detection_at: "09:00"
+  commitIssue: 1
+  maintainerTeam: "1mib"
+  fileType:
+    - "md"
+    - "html"
   labels:
   - "status/pending"
   - "kind/page"

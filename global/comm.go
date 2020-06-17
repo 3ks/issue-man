@@ -67,12 +67,12 @@ func Init(token string, conf *config.Config) {
 		Sugar.Infow("init logger", "level", "development")
 	}
 
+	Sugar.Infow("load config", "config", conf)
 	// 从配置文件读取指令列表
 	for _, v := range Conf.IssueComments {
 		Instructions[v.Metadata.Name] = v
 	}
-	Sugar.Infow("load instructs",
-		"done", Instructions)
+	Sugar.Debugw("load instructs", "done", Instructions)
 
 	// 从配置文件读取 Job 列表
 	for _, v := range Conf.Jobs {
@@ -82,8 +82,7 @@ func Init(token string, conf *config.Config) {
 		}
 		Jobs[v.Metadata.Name] = v
 	}
-	Sugar.Infow("load jobs",
-		"done", Jobs)
+	Sugar.Debugw("load jobs", "done", Jobs)
 
 	// 初始化 GitHub Client
 	ts := oauth2.StaticTokenSource(

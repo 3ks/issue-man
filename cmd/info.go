@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"issue-man/global"
 )
 
 var (
@@ -17,8 +16,7 @@ func init() {
 		Long:  `根据规则，清空任务仓库的内容。`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// 初始化配置初始化服务相关的东西
-			cfg := loadAndInit()
-			global.Sugar.Infow("load config", "config", cfg)
+			_ = loadAndInit()
 		},
 	}
 

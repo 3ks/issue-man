@@ -55,7 +55,7 @@ func issueComment(payload github.IssueCommentPayload) {
 
 // 维护团队成员变化情况
 func team(payload github.MembershipPayload) {
-	if payload.Team.Name == global.Conf.Repository.Spec.MaintainerTeam {
+	if payload.Team.Name == global.Conf.IssueCreate.Spec.MaintainerTeam {
 		global.LoadMaintainers()
 	}
 }
