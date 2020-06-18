@@ -101,17 +101,17 @@ spec:
     instruct: "synced"
     permision:
     - "@maintainer"
-    - "@member"
+    - "@assigner"
     permissionFeedback: "sorry"
     labels:
-    - "status/waiting-for-sync"
+    - "status/need-sync"
     labelFeedback: "sorry"
   action:
     addLabels:
     - "status/waiting-for-update"
     labelLimitFeedback: "sorry"
     removeLabels:
-    - "status/waiting-for-sync"
+    - "status/need-sync"
     - "status/stale"
     successFeedback: "thank you"
     failFeedback: "sorry"
@@ -125,15 +125,15 @@ spec:
     instruct: "wavier"
     permision:
     - "@maintainer"
-    - "@member"
+    - "@assigner"
     labels:
-    - "status/waiting-for-sync"
+    - "status/need-sync"
     labelFeedback: "sorry"
   action:
     addLabels:
     - "status/pending"
     removeLabels:
-    - "status/waiting-for-sync"
+    - "status/need-sync"
     - "status/waiting-for-update"
     - "status/stale"
     removeAssigners:
@@ -175,7 +175,7 @@ metadata:
 spec:
     in: 30
     labels:
-    - "status/waiting-for-sync"
+    - "status/need-sync"
     addLabels:
     - "status/stale"
 ---
@@ -195,5 +195,5 @@ spec:
 # 优化逻辑，并发
 # 日志
 #      accept                synced
-# pending/waiting-for-sync(stale)/synced/description
+# pending/need-sync(stale)/synced/description
 #                      waive
