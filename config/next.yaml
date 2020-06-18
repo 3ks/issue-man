@@ -5,7 +5,7 @@ metadata:
 spec:
   source:
     owner: "istio"
-    repository: "istio"
+    repository: "istio.io"
     site: "istio.io/latest"
     removePrefix: "content/en"
   translate:

@@ -11,6 +11,7 @@ import (
 	"issue-man/config"
 	"issue-man/global"
 	"net/http"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -41,7 +42,7 @@ func Init(conf config.Config) {
 // 根据规则（路径）获取全部上游文件
 func getUpstreamFiles() (files map[string]string, err error) {
 	c := *global.Conf
-	global.Sugar.Debugw("load upstream files list",
+	global.Sugar.Debugw("load upstream files",
 		"step", "start")
 	ts, resp, err := global.Client.Git.GetTree(context.TODO(),
 		c.Repository.Spec.Source.Owner,
@@ -50,7 +51,7 @@ func getUpstreamFiles() (files map[string]string, err error) {
 		true,
 	)
 	if err != nil {
-		global.Sugar.Errorw("load upstream files list",
+		global.Sugar.Errorw("load upstream files",
 			"call api", "get tree",
 			"err", err.Error(),
 		)
@@ -69,16 +70,19 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	for _, v := range ts.Entries {
 		// 仅处理支持的文件类型
 		if v.GetType() == "blob" && c.IssueCreate.SupportType(v.GetPath()) {
-			files[*v.Path] = *v.Path
+			files[v.GetPath()] = v.GetPath()
+			continue
 		}
 	}
+	global.Sugar.Debugw("get files",
+		"data", files)
 	return files, nil
 }
 
 // 根据规则（label）获取全部 issue，
 func getIssues() (issues map[string]*github.Issue, err error) {
 	c := *global.Conf
-	global.Sugar.Debugw("load upstream files list",
+	global.Sugar.Debugw("load workspace issues",
 		"step", "start")
 	opt := &github.IssueListByRepoOptions{}
 	// 仅根据 kind 类型的 label 筛选 issue
@@ -125,6 +129,8 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 		}
 		opt.Page++
 	}
+	global.Sugar.Debugw("get issues",
+		"data", issues)
 
 	return issues, nil
 }
@@ -156,13 +162,20 @@ func genAndCreateIssues(fs map[string]string) {
 		for _, v := range conf.IssueCreate.Spec.Includes {
 			// 符合条件的文件
 			if global.Conf.IssueCreate.SupportFile(v, file) {
-				// 根据 title 判断，如果已存在，则更新
+				// 根据 title 判断，如果已存在相关 issue，则更新
 				exist := existIssues[*parseTitleFromPath(file)]
 				if exist != nil {
 					updates[*exist.Number] = updateIssue(false, file, *exist)
 				} else {
-					// 不存在，则新建
-					creates[file] = newIssue(v, file)
+					// 不存在，则新建，新建也分两种情况
+					// 有多个新文件属于一个 issue
+					create := creates[*parseTitleFromPath(file)]
+					if create != nil {
+						creates[*parseTitleFromPath(file)] = updateNewIssue(false, file, create)
+					} else {
+						// 是一个新的新 issue
+						creates[*parseTitleFromPath(file)] = newIssue(v, file)
+					}
 				}
 				// 文件已处理，break 内层循环
 				break
@@ -170,6 +183,12 @@ func genAndCreateIssues(fs map[string]string) {
 		}
 	}
 
+	global.Sugar.Debugw("create issues",
+		"data", creates)
+	global.Sugar.Debugw("update issues",
+		"data", updates)
+
+	os.Exit(0)
 	wg := sync.WaitGroup{}
 	// update
 	for k, v := range updates {
@@ -243,6 +262,36 @@ func genAndCreateIssues(fs map[string]string) {
 
 	global.Sugar.Infow("init issues",
 		"step", "done")
+}
+
+// 根据已存在的 issue 和配置，返回更新后的 issue
+func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueRequest {
+	const (
+		CHECK = "status/need-check"
+	)
+
+	length := 0
+	exist.Body, length = genBody(false, file, exist.GetBody())
+
+	// 如果文件列表为 0，则添加特殊 label
+	// 反之则移除
+	if length == 0 {
+		tmp := append(*exist.Labels, CHECK)
+		exist.Labels = &tmp
+	} else {
+		index := 0
+		tmp := exist.GetLabels()
+		for _, v := range tmp {
+			if v == CHECK {
+				continue
+			}
+			(*exist.Labels)[index] = v
+			index++
+		}
+		tmp = tmp[:index]
+		exist.Labels = &tmp
+	}
+	return &exist
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
@@ -379,7 +428,7 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	if strings.Contains(file, "_index") {
 		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s#### Files\n\n", source))
+		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
 	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
@@ -392,7 +441,7 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	if strings.Contains(file, "_index") {
 		bf.WriteString(fmt.Sprintf("## Translate\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s#### Files\n\n", translate))
+		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s\n\n#### Files\n\n", translate))
 	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
