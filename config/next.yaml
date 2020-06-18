@@ -3,15 +3,21 @@ kind: "Repository"
 metadata:
   name: "3ks.dev"
 spec:
+  source:
+    owner: "istio"
+    repository: "istio"
+    site: "istio.io/latest"
+    removePrefix: "content/en"
+  translate:
+    owner: "1kib"
+    repository: "new"
+    site: "istio.io/zh/latest"
   workspace:
     owner: "1kib"
     repository: "new"
-    site: "istio.io/zh/docs"
-  upstream:
-    owner: "istio"
-    repository: "istio.io"
-    sourceSite: "istio.io/docs"
-    translateSite: "istio.io/zh/docs"
+    detectionAt: "09:00"
+    commitIssue: 1
+    maintainerTeam: "1mib"
   port: ":80"
   logLevel: "dev"
   verbose: false
@@ -21,9 +27,7 @@ kind: "IssueCreate"
 metadata:
   name: "issue-create"
 spec:
-  detection_at: "09:00"
-  commitIssue: 1
-  maintainerTeam: "1mib"
+  prefix: "content/en"
   fileType:
     - "md"
     - "html"

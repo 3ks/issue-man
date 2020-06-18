@@ -44,8 +44,8 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	global.Sugar.Debugw("load upstream files list",
 		"step", "start")
 	ts, resp, err := global.Client.Git.GetTree(context.TODO(),
-		c.Repository.Spec.Upstream.Owner,
-		c.Repository.Spec.Upstream.Repository,
+		c.Repository.Spec.Source.Owner,
+		c.Repository.Spec.Source.Repository,
 		"master",
 		true,
 	)
@@ -68,7 +68,7 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	files = make(map[string]string)
 	for _, v := range ts.Entries {
 		// 仅处理支持的文件类型
-		if v.GetType() == "blob" && c.IssueCreate.Need(v.GetPath()) {
+		if v.GetType() == "blob" && c.IssueCreate.SupportType(v.GetPath()) {
 			files[*v.Path] = *v.Path
 		}
 	}
@@ -152,17 +152,17 @@ func genAndCreateIssues(fs map[string]string) {
 	}
 	// 更新和创建的 issue
 	updates, creates := make(map[int]*github.IssueRequest), make(map[string]*github.IssueRequest)
-	for k := range fs {
+	for file := range fs {
 		for _, v := range conf.IssueCreate.Spec.Includes {
 			// 符合条件的文件
-			if v.OK(k) {
+			if global.Conf.IssueCreate.SupportFile(v, file) {
 				// 根据 title 判断，如果已存在，则更新
-				exist := existIssues[*parseTitleFromPath(k)]
+				exist := existIssues[*parseTitleFromPath(file)]
 				if exist != nil {
-					updates[*exist.Number] = updateIssue(false, k, *exist)
+					updates[*exist.Number] = updateIssue(false, file, *exist)
 				} else {
 					// 不存在，则新建
-					creates[k] = newIssue(v, k)
+					creates[file] = newIssue(v, file)
 				}
 				// 文件已处理，break 内层循环
 				break
@@ -312,6 +312,7 @@ func copyInt(src int) *int {
 // parseTitleFromPath 解析路径，生成 title
 // 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md，预期 title 为： faq/setup
 // 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
+// 不会出现返回 nil 的情况，最差情况下返回值为 ""
 func parseTitleFromPath(p string) (title *string) {
 	tmp := ""
 	title = &tmp
@@ -326,13 +327,17 @@ func parseTitleFromPath(p string) (title *string) {
 }
 
 // parseURLFormPath
-// 根据 PATH 生成站点的 URL
+// 根据 PATH 生成站点的  HTTPS URL
+// TODO site 站点和 github 文件路径处理配置化
 func parseURLFormPath(p string) (source, translate string) {
-	t := strings.Split(p, "/")
-	tmp := strings.Join(t[1:len(t)-1], "/") // 去除两端路径,TODO 配置化？
-	source = fmt.Sprintf("https://%s/%s", global.Conf.Repository.Spec.Upstream.SourceSite, tmp)
-	translate = fmt.Sprintf("https://%s/%s", global.Conf.Repository.Spec.Upstream.TranslateSite, tmp)
-	return
+	// 去除两端路径
+	t := strings.Split(strings.Replace(p, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
+	tmp := path.Join(t[:len(t)-1]...)
+
+	sourceSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Source.Site, "/"), "https://"), "http://")
+	translateSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Translate.Site, "/"), "https://"), "http://")
+
+	return fmt.Sprintf("https://%s", path.Join(sourceSite, tmp)), fmt.Sprintf("https://%s", path.Join(translateSite, tmp))
 }
 
 // genBody 根据文件名和旧的 body，生成新的 body
@@ -378,8 +383,8 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
-			global.Conf.Repository.Spec.Upstream.Owner,
-			global.Conf.Repository.Spec.Upstream.Repository,
+			global.Conf.Repository.Spec.Source.Owner,
+			global.Conf.Repository.Spec.Source.Repository,
 			v))
 	}
 
@@ -391,8 +396,8 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	}
 	for _, v := range fs {
 		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
-			global.Conf.Repository.Spec.Upstream.Owner,
-			global.Conf.Repository.Spec.Upstream.Repository,
+			global.Conf.Repository.Spec.Translate.Owner,
+			global.Conf.Repository.Spec.Translate.Repository,
 			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
 	}
 	t = bf.String()

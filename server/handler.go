@@ -32,9 +32,15 @@ func handler(c *gin.Context) {
 	c.String(http.StatusOK, "")
 }
 
+// 手动调用更新函数
+func Sync(c *gin.Context) {
+	syncIssues()
+	c.String(http.StatusOK, "")
+}
+
 func issueComment(payload github.IssueCommentPayload) {
 	// 不处理未知 repository 的事件
-	if payload.Repository.FullName != global.Conf.Repository.Spec.Workspace.GetFullName() {
+	if payload.Repository.FullName != global.Conf.Repository.Spec.Source.GetFullName() {
 		return
 	}
 
@@ -55,7 +61,7 @@ func issueComment(payload github.IssueCommentPayload) {
 
 // 维护团队成员变化情况
 func team(payload github.MembershipPayload) {
-	if payload.Team.Name == global.Conf.IssueCreate.Spec.MaintainerTeam {
+	if payload.Team.Name == global.Conf.Repository.Spec.Workspace.MaintainerTeam {
 		global.LoadMaintainers()
 	}
 }

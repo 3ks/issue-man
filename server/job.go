@@ -31,7 +31,7 @@ func job() {
 	global.Sugar.Info("loaded jobs", "list", global.Jobs)
 	// 解析检测时间
 	t, err := time.ParseInLocation("2006-01-02 15:04",
-		time.Now().Format("2006-01-02 ")+global.Conf.IssueCreate.Spec.DetectionAt,
+		time.Now().Format("2006-01-02 ")+global.Conf.Repository.Spec.Workspace.DetectionAt,
 		time.Local)
 	if err != nil {
 		global.Sugar.Errorw("parse detection time",
@@ -78,7 +78,15 @@ func syncIssues() {
 	}
 	// 获取 commit 列表
 	commits := getRangeCommits(*preCommit.Body)
-	preCommit.Body = &commits[len(commits)-1]
+	if len(commits) == 0 {
+		global.Sugar.Warnw("get issues files",
+			"status", "abnormal",
+			"length", "0",
+		)
+		return
+	}
+	preCommit.Body = &commits[0]
+
 	// 更新 commit issue
 	defer updateCommitIssue(preCommit)
 
@@ -107,17 +115,17 @@ func syncIssues() {
 			// 1. 判断是否需要处理
 			for _, include := range global.Conf.IssueCreate.Spec.Includes {
 				// 符合条件的文件
-				if include.OK(*file.cf.Filename) {
+				if global.Conf.IssueCreate.SupportFile(include, file.cf.GetFilename()) {
 					// 应该是一个移动文件操作
 					if file.cf.PreviousFilename != nil {
 						file.Sync(
 							include,
-							existIssues[*parseTitleFromPath(*file.cf.Filename)],
-							existIssues[*parseTitleFromPath(*file.cf.PreviousFilename)])
+							existIssues[*parseTitleFromPath(file.cf.GetFilename())],
+							existIssues[*parseTitleFromPath(file.cf.GetPreviousFilename())])
 					} else {
 						file.Sync(
 							include,
-							existIssues[*parseTitleFromPath(*file.cf.Filename)],
+							existIssues[*parseTitleFromPath(file.cf.GetFilename())],
 							nil)
 					}
 					// 文件已处理
@@ -320,8 +328,8 @@ func getAssociatedFiles(prs []int) []File {
 			}
 			tmp, resp, err := global.Client.PullRequests.ListFiles(
 				context.TODO(),
-				global.Conf.Repository.Spec.Upstream.Owner,
-				global.Conf.Repository.Spec.Upstream.Repository,
+				global.Conf.Repository.Spec.Source.Owner,
+				global.Conf.Repository.Spec.Source.Repository,
 				v,
 				opt)
 			if err != nil {
@@ -362,8 +370,8 @@ func getAssociatedPRs(commits []string) []int {
 	for _, sha := range commits {
 		ps, resp, err := global.Client.PullRequests.ListPullRequestsWithCommit(
 			context.TODO(),
-			global.Conf.Repository.Spec.Upstream.Owner,
-			global.Conf.Repository.Spec.Upstream.Repository,
+			global.Conf.Repository.Spec.Source.Owner,
+			global.Conf.Repository.Spec.Source.Repository,
 			sha,
 			nil,
 		)
@@ -411,8 +419,8 @@ func getRangeCommits(preSHA string) []string {
 
 	for {
 		tmp, resp, err := global.Client.Repositories.ListCommits(context.TODO(),
-			global.Conf.Repository.Spec.Upstream.Owner,
-			global.Conf.Repository.Spec.Upstream.Repository,
+			global.Conf.Repository.Spec.Source.Owner,
+			global.Conf.Repository.Spec.Source.Repository,
 			opt)
 		if err != nil {
 			global.Sugar.Errorw("load commit list",
@@ -456,7 +464,7 @@ func getCommitIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		global.Conf.IssueCreate.Spec.CommitIssue,
+		global.Conf.Repository.Spec.Workspace.CommitIssue,
 	)
 	if err != nil {
 		global.Sugar.Errorw("load commit issue",

@@ -22,12 +22,10 @@ type Base struct {
 }
 
 type Selector struct {
-	Owner      string `yaml:"owner"`
-	Repository string `yaml:"repository"`
-	//SourceFile    string `yaml:"sourceFile"`    // TODO
-	//TranslateFile string `yaml:"translateFile"` // TODO
-	SourceSite    string `yaml:"sourceSite"`
-	TranslateSite string `yaml:"translateSite"`
+	Owner        string `yaml:"owner"`
+	Repository   string `yaml:"repository"`
+	Site         string `yaml:"site"`
+	RemovePrefix string `yaml:"removePrefix"`
 }
 
 // 拼装 owner 和 repository
@@ -39,12 +37,18 @@ func (s Selector) GetFullName() string {
 type Repository struct {
 	Base
 	Spec struct {
-		Source    Selector `yaml:"upstream"`  // 源库
-		Translate Selector `yaml:"upstream"`  // 翻译库
-		Workspace Selector `yaml:"workspace"` // 工作库
-		Port      string   `yaml:"port"`
-		LogLevel  string   `yaml:"logLevel"`
-		Verbose   bool     `yaml:"verbose"`
+		Source    Selector `yaml:"source"`    // 源库
+		Translate Selector `yaml:"translate"` // 翻译库
+		Workspace struct {
+			Owner          string `yaml:"owner"`
+			Repository     string `yaml:"repository"`
+			DetectionAt    string `yaml:"detectionAt"`
+			MaintainerTeam string `yaml:"maintainerTeam"`
+			CommitIssue    int    `yaml:"commitIssue"`
+		} `yaml:"workspace"` // 工作库
+		Port     string `yaml:"port"`
+		LogLevel string `yaml:"logLevel"`
+		Verbose  bool   `yaml:"verbose"`
 	} `yaml:"spec"`
 }
 
@@ -52,27 +56,24 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		DetectionAt    string    `yaml:"detection_at"`
-		CommitIssue    int       `yaml:"commitIssue"`
-		MaintainerTeam string    `yaml:"maintainerTeam"`
-		FileType       []string  `yaml:"fileType"`
-		Labels         []string  `yaml:"labels"`
-		Assignees      []string  `yaml:"assignees"`
-		Milestone      int       `yaml:"milestone"`
-		Content        string    `yaml:"content"`
-		Includes       []Include `yaml:"includes"`
+		Prefix    string    `yaml:"prefix"`
+		FileType  []string  `yaml:"fileType"`
+		Labels    []string  `yaml:"labels"`
+		Assignees []string  `yaml:"assignees"`
+		Milestone int       `yaml:"milestone"`
+		Includes  []Include `yaml:"includes"`
 	} `yaml:"spec"`
 }
 
-// 验证文件是否为需要处理的文件
-func (s IssueCreate) Need(file string) bool {
+// 验证文件是否为需要处理的文件格式
+func (i IssueCreate) SupportType(file string) bool {
 	// 前缀不匹配
-	if !strings.HasPrefix(file, s.Spec.Content) {
+	if !strings.HasPrefix(file, i.Spec.Prefix) {
 		return false
 	}
 
 	ext := strings.ReplaceAll(path.Ext(file), ".", "")
-	for _, v := range s.Spec.FileType {
+	for _, v := range i.Spec.FileType {
 		// 后缀匹配
 		if v == ext {
 			return true
@@ -81,31 +82,32 @@ func (s IssueCreate) Need(file string) bool {
 	return false
 }
 
-type Include struct {
-	Path    string    `yaml:"path"`
-	Labels  []string  `yaml:"labels"`
-	Exclude []Include `yaml:"exclude"`
-}
-
 // 判断是否处理该文件
-func (i Include) OK(p string) bool {
-	// 仅判断 .md 文件和 html 文件
-	if path.Ext(p) != ".md" || path.Ext(p) != ".html" {
+func (i IssueCreate) SupportFile(include Include, filename string) bool {
+	// 仅处理支持的文件格式
+	if !i.SupportType(filename) {
 		return false
 	}
 
 	// 不包含关键字
-	if !strings.Contains(p, i.Path) {
+	if !strings.Contains(filename, include.Path) {
 		return false
 	}
 
 	// 排除的子目录
-	for _, v := range i.Exclude {
-		if strings.Contains(p, v.Path) {
+	for _, v := range include.Exclude {
+		if strings.Contains(filename, v.Path) {
 			return false
 		}
 	}
+
 	return true
+}
+
+type Include struct {
+	Path    string    `yaml:"path"`
+	Labels  []string  `yaml:"labels"`
+	Exclude []Include `yaml:"exclude"`
 }
 
 // Issue Comment 相关的配置
@@ -134,7 +136,7 @@ type Rule struct {
 type Action struct {
 	AddLabels          []string `yaml:"addLabels"`
 	AddLabelsLimit     int      `yaml:"addLabelsLimit"`
-	LabelLimitFeedback string   `json:"labelLimitFeedback"`
+	LabelLimitFeedback string   `yaml:"labelLimitFeedback"`
 	RemoveLabels       []string `yaml:"removeLabels"`
 	AddAssigners       []string `yaml:"addAssigners"`
 	RemoveAssigners    []string `yaml:"removeAssigners"`

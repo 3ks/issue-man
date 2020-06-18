@@ -35,7 +35,7 @@ func Start(conf config.Config) {
 
 	v1 := router.Group("/api/v1")
 	v1.POST("/webhooks/", handler)
-	v1.POST("/service-mesher/", handler)
+	v1.POST("/sync", Sync)
 
 	srv := &http.Server{
 		Addr:    global.Conf.Repository.Spec.Port,
