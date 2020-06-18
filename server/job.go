@@ -112,9 +112,9 @@ func syncIssues() {
 	// 做出不同操作
 	lock := make(chan int, 5)
 	go func() {
-		// 将 API 频率限制为每秒 5 次
+		// 将 API 频率限制为每秒 2 次
 		for range lock {
-			time.Sleep(time.Millisecond * 200)
+			time.Sleep(time.Millisecond * 500)
 		}
 	}()
 	for _, file := range files {
