@@ -10,6 +10,7 @@ import (
 	"issue-man/global"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // Destroy 根据规则删除任务仓库的 issue。
@@ -23,11 +24,18 @@ func Destroy(conf config.Config) {
 		return
 	}
 	wg := sync.WaitGroup{}
-
+	lock := make(chan int, 5)
+	go func() {
+		// 将 API 频率限制为每秒 5 次
+		for range lock {
+			time.Sleep(time.Millisecond * 200)
+		}
+	}()
 	for _, v := range issues {
 		wg.Add(1)
 		go func(issue *github.Issue) {
 			defer wg.Done()
+			lock <- 1
 			issueRequest := issueToRequest(issue)
 			state := "close"
 			issueRequest.State = &state
@@ -68,14 +76,24 @@ func Destroy(conf config.Config) {
 // issueToRequest
 // 将 github.Issue（API Response）转换为 github.IssueRequest（API Request）
 func issueToRequest(issue *github.Issue) (ir *github.IssueRequest) {
-	return &github.IssueRequest{
-		Title:     issue.Title,
-		Body:      issue.Body,
-		State:     issue.State,
-		Milestone: issue.Milestone.Number,
-		Labels:    convertLabel(issue.Labels),
-		Assignees: convertAssignees(issue.Assignees),
+	ir = &github.IssueRequest{
+		Title: issue.Title,
+		Body:  issue.Body,
+		State: issue.State,
+		//Milestone: issue.Milestone.Number,
+		//Labels:    convertLabel(issue.Labels),
+		//Assignees: convertAssignees(issue.Assignees),
 	}
+	if issue.Milestone != nil {
+		ir.Milestone = issue.Milestone.Number
+	}
+	if issue.Labels != nil {
+		ir.Labels = convertLabel(issue.Labels)
+	}
+	if issue.Assignees != nil {
+		ir.Assignees = convertAssignees(issue.Assignees)
+	}
+	return
 }
 
 // convertLabel

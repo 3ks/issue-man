@@ -72,12 +72,12 @@ func job() {
 
 //
 func syncIssues() {
-	preCommit := getCommitIssue()
-	if preCommit == nil {
+	commitIssue := getCommitIssue()
+	if commitIssue == nil {
 		return
 	}
 	// 获取 commit 列表
-	commits := getRangeCommits(*preCommit.Body)
+	commits := getRangeCommits(getShaFromCommitIssue(*commitIssue.Body))
 	if len(commits) == 0 {
 		global.Sugar.Warnw("get issues files",
 			"status", "abnormal",
@@ -85,16 +85,18 @@ func syncIssues() {
 		)
 		return
 	}
-	preCommit.Body = &commits[0]
-
+	// 最近一次 commit
+	commitIssue.Body = genBodyBySha(commits[0])
 	// 更新 commit issue
-	defer updateCommitIssue(preCommit)
+	defer updateCommitIssue(commitIssue)
 
 	// 获取 pr 列表
 	prs := getAssociatedPRs(commits)
 
 	// 获取 pr 涉及的文件列表
 	files := getAssociatedFiles(prs)
+
+	// 获取现有 issue 列表
 	existIssues, err := getIssues()
 	if err != nil {
 		global.Sugar.Errorw("get issues files",
@@ -108,6 +110,13 @@ func syncIssues() {
 	// 遍历文件
 	// 判断是否匹配
 	// 做出不同操作
+	lock := make(chan int, 5)
+	go func() {
+		// 将 API 频率限制为每秒 5 次
+		for range lock {
+			time.Sleep(time.Millisecond * 200)
+		}
+	}()
 	for _, file := range files {
 		wg.Add(1)
 		go func(file File) {
@@ -116,6 +125,7 @@ func syncIssues() {
 			for _, include := range global.Conf.IssueCreate.Spec.Includes {
 				// 符合条件的文件
 				if global.Conf.IssueCreate.SupportFile(include, file.cf.GetFilename()) {
+					lock <- 1
 					// 应该是一个移动文件操作
 					if file.cf.PreviousFilename != nil {
 						file.Sync(
@@ -137,6 +147,25 @@ func syncIssues() {
 	wg.Wait()
 }
 
+func getShaFromCommitIssue(body string) string {
+	tmp := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
+	if len(tmp) == 0 {
+		return ""
+	}
+	return tmp[0]
+}
+
+// 生成带链接的 commit issue
+func genBodyBySha(sha string) *string {
+	body := fmt.Sprintf("%s\n\nhttps://github.com/%s/%s/tree/%s",
+		sha,
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		sha,
+	)
+	return &body
+}
+
 type File struct {
 	PrNumber int `json:"pr_number"`
 	cf       *github.CommitFile
@@ -152,7 +181,7 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 	)
 	switch *f.cf.Status {
 	// 更新 issue，不存在则创建 issue
-	case ADD, MODIFY, MOVE:
+	case ADD, MODIFY:
 		// 更新 issue
 		if existIssue != nil {
 			// 更新 issue
@@ -162,31 +191,38 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 			// 创建 issue
 			f.create(include)
 		}
+	case MOVE:
+		// 更新 issue
+		if existIssue != nil {
+			// 更新 issue
+			f.update(existIssue)
+			// comment
+		} else {
+			// 创建 issue
+			f.create(include)
+		}
+		// 对于 moved 的文件，除了上面的操作，还有一个动作：
+		// 在之前的 issue 中移除这个文件
+		if preIssue != nil {
+			f.remove(preIssue)
+		} else {
+			global.Sugar.Warnw("move pre file issue",
+				"status", "has no match issue",
+				"file", f)
+		}
 	// 移除文件
 	case REMOVE:
 		if existIssue != nil {
 			f.remove(existIssue)
 		} else {
 			global.Sugar.Warnw("remove exist file issue",
-				"status", "fail",
+				"status", "has no match issue",
 				"file", f)
 		}
 	default:
 		global.Sugar.Warnw("unknown status",
 			"file", f,
 			"status", *f.cf.Status)
-	}
-
-	// 对于 moved 的文件，除了上面的操作，还有一个动作：
-	// 在之前的 issue 中移除这个文件
-	if *f.cf.Status == MOVE {
-		if preIssue != nil {
-			f.remove(preIssue)
-		} else {
-			global.Sugar.Warnw("move pre file issue",
-				"status", "fail",
-				"file", f)
-		}
 	}
 }
 
@@ -410,7 +446,6 @@ func getRangeCommits(preSHA string) []string {
 	commits := make([]github.RepositoryCommit, 0)
 	page := 1
 	opt := &github.CommitsListOptions{
-		Path: "",
 		ListOptions: github.ListOptions{
 			Page:    page,
 			PerPage: 100,
@@ -460,6 +495,47 @@ func getRangeCommits(preSHA string) []string {
 	}
 }
 
+// 获取最新的
+func getLatestCommit() string {
+	opt := &github.CommitsListOptions{
+		ListOptions: github.ListOptions{
+			Page:    1,
+			PerPage: 1,
+		},
+	}
+	commits, resp, err := global.Client.Repositories.ListCommits(
+		context.TODO(),
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		opt,
+	)
+	if err != nil {
+		global.Sugar.Errorw("load latest commit",
+			"call api", "failed",
+			"err", err.Error(),
+		)
+		return ""
+	}
+	if resp.StatusCode != http.StatusOK {
+		global.Sugar.Errorw("load latest commit",
+			"call api", "unexpect status code",
+			"status", resp.Status,
+			"status code", resp.StatusCode,
+			"response", resp.Body,
+		)
+		return ""
+	}
+	if len(commits) == 0 {
+		global.Sugar.Errorw("load latest commit",
+			"call api", "unexpect resp length",
+			"length", 0,
+			"response", resp.Body,
+		)
+		return ""
+	}
+	return commits[0].GetSHA()
+}
+
 func getCommitIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
@@ -487,6 +563,14 @@ func getCommitIssue() *github.Issue {
 }
 
 func updateCommitIssue(is *github.Issue) {
+	if is.Body == nil {
+		global.Sugar.Errorw("update commit issue",
+			"confirm", "failed",
+			"cause", "body can not be nil",
+			"data", is,
+		)
+		return
+	}
 	ir := issueToRequest(is)
 	is, resp, err := global.Client.Issues.Edit(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,

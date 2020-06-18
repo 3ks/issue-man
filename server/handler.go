@@ -7,6 +7,8 @@ import (
 	"issue-man/global"
 	"issue-man/operation"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 // issue-man 工作流程：
@@ -34,8 +36,19 @@ func handler(c *gin.Context) {
 
 // 手动调用更新函数
 func Sync(c *gin.Context) {
+	// 假装要一个 token
+	reqUnix, err := strconv.Atoi(c.Query("token"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "unauthorized"})
+		return
+	}
+	// 只允许 10 秒钟的偏差
+	if time.Now().Unix()-int64(reqUnix) > 10 {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "unauthorized"})
+		return
+	}
 	syncIssues()
-	c.String(http.StatusOK, "")
+	c.JSON(http.StatusOK, gin.H{"status": "done"})
 }
 
 func issueComment(payload github.IssueCommentPayload) {

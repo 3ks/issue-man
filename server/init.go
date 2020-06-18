@@ -11,11 +11,11 @@ import (
 	"issue-man/config"
 	"issue-man/global"
 	"net/http"
-	"os"
 	"path"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // 注意：这个 Init 并不是传统的初始化函数！
@@ -35,7 +35,11 @@ func Init(conf config.Config) {
 		)
 		return
 	}
-
+	// init 始终基于最新 commit 来完成，
+	// 所以这里直接更新 commit issue body
+	commitIssue := getCommitIssue()
+	commitIssue.Body = genBodyBySha(getLatestCommit())
+	defer updateCommitIssue(commitIssue)
 	genAndCreateIssues(fs)
 }
 
@@ -80,6 +84,8 @@ func getUpstreamFiles() (files map[string]string, err error) {
 }
 
 // 根据规则（label）获取全部 issue，
+// key 为 title
+// title 由 parseTitleFromPath 生成
 func getIssues() (issues map[string]*github.Issue, err error) {
 	c := *global.Conf
 	global.Sugar.Debugw("load workspace issues",
@@ -121,7 +127,7 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 		}
 
 		for _, v := range is {
-			issues[*v.Title] = v
+			issues[v.GetTitle()] = v
 		}
 
 		if len(is) < opt.PerPage {
@@ -135,9 +141,6 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 	return issues, nil
 }
 
-// TODO 定时检测应该存在的 issue，和实际存在的 issue
-// TODO 并做出添加、更新、删除操作。（频率较低）
-// TODO 根据 commit 做出操作（频率较高）
 // 根据配置、文件列表、已存在 issue，判断生成最终操作列表
 // 遍历文件，判断文件是否符合条件，符合则直接创建
 // （实现根据文件名生成 title、body。根据配置生成 label、assignees 的 issue）
@@ -158,6 +161,7 @@ func genAndCreateIssues(fs map[string]string) {
 	}
 	// 更新和创建的 issue
 	updates, creates := make(map[int]*github.IssueRequest), make(map[string]*github.IssueRequest)
+	updateFail, createFail := 0, 0
 	for file := range fs {
 		for _, v := range conf.IssueCreate.Spec.Includes {
 			// 符合条件的文件
@@ -185,16 +189,23 @@ func genAndCreateIssues(fs map[string]string) {
 
 	//global.Sugar.Debugw("create issues",
 	//	"data", creates)
-	global.Sugar.Debugw("update issues",
-		"data", updates)
+	//global.Sugar.Debugw("update issues",
+	//	"data", updates)
 
-	os.Exit(0)
 	wg := sync.WaitGroup{}
+	lock := make(chan int, 5)
+	go func() {
+		// 将 API 频率限制为每秒 5 次
+		for range lock {
+			time.Sleep(time.Millisecond * 500)
+		}
+	}()
 	// update
 	for k, v := range updates {
 		wg.Add(1)
 		go func(number int, issue *github.IssueRequest) {
 			defer wg.Done()
+			lock <- 1
 			_, resp, err := global.Client.Issues.Edit(
 				context.TODO(),
 				global.Conf.Repository.Spec.Workspace.Owner,
@@ -209,6 +220,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"title", issue.Title,
 					"body", issue.Body,
 					"err", err.Error())
+				updateFail++
 				return
 			}
 			defer resp.Body.Close()
@@ -221,6 +233,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"body", issue.Body,
 					"status code", resp.StatusCode,
 					"resp body", string(body))
+				updateFail++
 				return
 			}
 		}(k, v)
@@ -231,6 +244,7 @@ func genAndCreateIssues(fs map[string]string) {
 		wg.Add(1)
 		go func(issue *github.IssueRequest) {
 			defer wg.Done()
+			lock <- 1
 			_, resp, err := global.Client.Issues.Create(
 				context.TODO(),
 				global.Conf.Repository.Spec.Workspace.Owner,
@@ -243,6 +257,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"title", issue.Title,
 					"body", issue.Body,
 					"err", err.Error())
+				createFail++
 				return
 			}
 			defer resp.Body.Close()
@@ -254,6 +269,7 @@ func genAndCreateIssues(fs map[string]string) {
 					"body", issue.Body,
 					"status code", resp.StatusCode,
 					"resp body", string(body))
+				createFail++
 				return
 			}
 		}(v)
@@ -261,7 +277,12 @@ func genAndCreateIssues(fs map[string]string) {
 	wg.Wait()
 
 	global.Sugar.Infow("init issues",
-		"step", "done")
+		"step", "done",
+		"create", len(creates),
+		"create fail", createFail,
+		"update", len(updates),
+		"update fail", updateFail,
+	)
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
@@ -274,7 +295,7 @@ func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueReques
 // 根据已存在的 issue 和配置，返回更新后的 issue
 func updateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
 	const (
-		CHECK = "status/need-check"
+		CHECK = "status/need-confirm"
 	)
 
 	length := 0
@@ -284,9 +305,15 @@ func updateIssue(remove bool, file string, exist github.Issue) (update *github.I
 
 	// 对于已存在的 issue
 	// label、assignees、milestone 不会变化
-	update.Labels = convertLabel(exist.Labels)
-	update.Assignees = convertAssignees(exist.Assignees)
-	update.Milestone = exist.Milestone.Number
+	if exist.Milestone != nil {
+		update.Milestone = exist.Milestone.Number
+	}
+	if exist.Labels != nil {
+		update.Labels = convertLabel(exist.Labels)
+	}
+	if exist.Assignees != nil {
+		update.Assignees = convertAssignees(exist.Assignees)
+	}
 
 	// 如果文件列表为 0，则添加特殊 label
 	// 反之则移除
@@ -300,7 +327,7 @@ func updateIssue(remove bool, file string, exist github.Issue) (update *github.I
 			if v == CHECK {
 				continue
 			}
-			(*update.Labels)[index] = v
+			tmp[index] = v
 			index++
 		}
 		tmp = tmp[:index]
@@ -316,6 +343,17 @@ func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 
 	// 创建新切片
 	labels := append(*copySlice(global.Conf.IssueCreate.Spec.Labels), include.Labels...)
+	labelMap := make(map[string]bool)
+	for _, v := range labels {
+		labelMap[v] = true
+	}
+	index := 0
+	// label 去重
+	for k := range labelMap {
+		labels[index] = k
+		index++
+	}
+
 	new.Labels = &labels
 	new.Assignees = copySlice(global.Conf.IssueCreate.Spec.Assignees)
 	new.Milestone = copyInt(global.Conf.IssueCreate.Spec.Milestone)
@@ -354,7 +392,6 @@ func parseTitleFromPath(p string) (title *string) {
 
 // parseURLFormPath
 // 根据 PATH 生成站点的  HTTPS URL
-// TODO site 站点和 github 文件路径处理配置化
 func parseURLFormPath(p string) (source, translate string) {
 	// 去除两端路径
 	t := strings.Split(strings.Replace(p, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
@@ -378,6 +415,12 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	lines := strings.Split(oldBody, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "content/en") { // TODO
+			// 去掉旧文件的 https://xxx.com 前缀，后面会重新生成
+			tmp := strings.Split(line, "content/en")
+			if len(tmp) != 2 {
+				continue
+			}
+			line = fmt.Sprintf("content/en%s", tmp[1])
 			files[line] = line
 		}
 	}
@@ -400,6 +443,7 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	})
 
 	source, translate := parseURLFormPath(file)
+
 	// 构造 body
 	bf := bytes.Buffer{}
 	// _index 类文件无统一页面
@@ -412,7 +456,6 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 		if v == "" {
 			continue
 		}
-		// TODO 知识盲区
 		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
