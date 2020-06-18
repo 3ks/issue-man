@@ -9,9 +9,9 @@ spec:
     site: "istio.io/latest"
     removePrefix: "content/en"
   translate:
-    owner: "1kib"
-    repository: "new"
-    site: "istio.io/zh/latest"
+    owner: "istio"
+    repository: "istio.io"
+    site: "istio.io/latest/zh"
   workspace:
     owner: "1kib"
     repository: "new"

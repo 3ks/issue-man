@@ -74,8 +74,8 @@ func getUpstreamFiles() (files map[string]string, err error) {
 			continue
 		}
 	}
-	global.Sugar.Debugw("get files",
-		"data", files)
+	//global.Sugar.Debugw("get files",
+	//	"data", files)
 	return files, nil
 }
 
@@ -171,7 +171,7 @@ func genAndCreateIssues(fs map[string]string) {
 					// 有多个新文件属于一个 issue
 					create := creates[*parseTitleFromPath(file)]
 					if create != nil {
-						creates[*parseTitleFromPath(file)] = updateNewIssue(false, file, create)
+						creates[*parseTitleFromPath(file)] = updateNewIssue(file, create)
 					} else {
 						// 是一个新的新 issue
 						creates[*parseTitleFromPath(file)] = newIssue(v, file)
@@ -183,8 +183,8 @@ func genAndCreateIssues(fs map[string]string) {
 		}
 	}
 
-	global.Sugar.Debugw("create issues",
-		"data", creates)
+	//global.Sugar.Debugw("create issues",
+	//	"data", creates)
 	global.Sugar.Debugw("update issues",
 		"data", updates)
 
@@ -265,33 +265,10 @@ func genAndCreateIssues(fs map[string]string) {
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
+// 仅更新 body
 func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueRequest {
-	const (
-		CHECK = "status/need-check"
-	)
-
-	length := 0
-	exist.Body, length = genBody(false, file, exist.GetBody())
-
-	// 如果文件列表为 0，则添加特殊 label
-	// 反之则移除
-	if length == 0 {
-		tmp := append(*exist.Labels, CHECK)
-		exist.Labels = &tmp
-	} else {
-		index := 0
-		tmp := exist.GetLabels()
-		for _, v := range tmp {
-			if v == CHECK {
-				continue
-			}
-			(*exist.Labels)[index] = v
-			index++
-		}
-		tmp = tmp[:index]
-		exist.Labels = &tmp
-	}
-	return &exist
+	exist.Body, _ = genBody(false, file, exist.GetBody())
+	return exist
 }
 
 // 根据已存在的 issue 和配置，返回更新后的 issue
@@ -398,9 +375,10 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 	// map 存储去重
 	files := make(map[string]string)
 	files[file] = file
-	for _, v := range strings.Split(oldBody, "\n") {
-		if strings.Contains(v, "content/source/") {
-			files[v] = v
+	lines := strings.Split(oldBody, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "content/en") { // TODO
+			files[line] = line
 		}
 	}
 	// 用于移除某个文件的情况
@@ -431,11 +409,17 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
 	}
 	for _, v := range fs {
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
+		if v == "" {
+			continue
+		}
+		// TODO 知识盲区
+		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
 			v))
 	}
+
+	bf.WriteString("\n")
 
 	// _index 类文件无统一页面
 	if strings.Contains(file, "_index") {
@@ -444,7 +428,10 @@ func genBody(remove bool, file, oldBody string) (body *string, length int) {
 		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s\n\n#### Files\n\n", translate))
 	}
 	for _, v := range fs {
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n",
+		if v == "" {
+			continue
+		}
+		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
 			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
