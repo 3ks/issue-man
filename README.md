@@ -103,7 +103,7 @@ body:
 
 comment 模板
 maintainer：@assignees
-status: modified
+status: added/modified/renamed/removed
 pr: 
 diff：https://github.com/istio/istio.io/pull/<pr_number>/files#diff-<md5(filename)>
 

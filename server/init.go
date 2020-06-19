@@ -292,7 +292,13 @@ func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueReques
 	return exist
 }
 
-// 根据已存在的 issue 和配置，返回更新后的 issue
+// 更新 issue request 的 body
+func updateIssueRequest(remove bool, file string, exist *github.IssueRequest) *github.IssueRequest {
+	exist.Body, _ = genBody(remove, file, exist.GetBody())
+	return exist
+}
+
+// 根据已存在的 issue 和配置，返回更新后的 IssueRequest
 func updateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
 	const (
 		CHECK = "status/need-confirm"
@@ -377,6 +383,7 @@ func copyInt(src int) *int {
 // 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md，预期 title 为： faq/setup
 // 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
 // 不会出现返回 nil 的情况，最差情况下返回值为 ""
+// TODO 以目录、文件为单位（配置化）进行划分
 func parseTitleFromPath(p string) (title *string) {
 	tmp := ""
 	title = &tmp

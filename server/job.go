@@ -126,18 +126,11 @@ func syncIssues() {
 				// 符合条件的文件
 				if global.Conf.IssueCreate.SupportFile(include, file.cf.GetFilename()) {
 					lock <- 1
-					// 应该是一个移动文件操作
-					if file.cf.PreviousFilename != nil {
-						file.Sync(
-							include,
-							existIssues[*parseTitleFromPath(file.cf.GetFilename())],
-							existIssues[*parseTitleFromPath(file.cf.GetPreviousFilename())])
-					} else {
-						file.Sync(
-							include,
-							existIssues[*parseTitleFromPath(file.cf.GetFilename())],
-							nil)
-					}
+					file.Sync(
+						include,
+						existIssues[*parseTitleFromPath(file.cf.GetFilename())],
+						existIssues[*parseTitleFromPath(file.cf.GetPreviousFilename())],
+					)
 					// 文件已处理
 					return
 				}
@@ -173,10 +166,12 @@ type File struct {
 
 // 处理需同步文件
 func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
+	// 这里的操作指的是文件的操作
+	// 至于 issue 是否存在，调用何种方法，需要额外判断
 	const (
 		ADD    = "added"
 		MODIFY = "modified"
-		MOVE   = "moved"
+		RENAME = "renamed"
 		REMOVE = "removed"
 	)
 	switch *f.cf.Status {
@@ -184,41 +179,17 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 	case ADD, MODIFY:
 		// 更新 issue
 		if existIssue != nil {
-			// 更新 issue
 			f.update(existIssue)
-			// comment
 		} else {
 			// 创建 issue
 			f.create(include)
 		}
-	case MOVE:
-		// 更新 issue
-		if existIssue != nil {
-			// 更新 issue
-			f.update(existIssue)
-			// comment
-		} else {
-			// 创建 issue
-			f.create(include)
-		}
-		// 对于 moved 的文件，除了上面的操作，还有一个动作：
-		// 在之前的 issue 中移除这个文件
-		if preIssue != nil {
-			f.remove(preIssue)
-		} else {
-			global.Sugar.Warnw("move pre file issue",
-				"status", "has no match issue",
-				"file", f)
-		}
+	// 重命名/移动文件
+	case RENAME:
+		f.rename(include, existIssue, preIssue)
 	// 移除文件
 	case REMOVE:
-		if existIssue != nil {
-			f.remove(existIssue)
-		} else {
-			global.Sugar.Warnw("remove exist file issue",
-				"status", "has no match issue",
-				"file", f)
-		}
+		f.remove(existIssue)
 	default:
 		global.Sugar.Warnw("unknown status",
 			"file", f,
@@ -256,20 +227,33 @@ func (f File) create(include config.Include) {
 	}
 }
 
-// 更新 issue，并 comment 如果 issue 不存在，则创建
-func (f File) update(existIssue *github.Issue) {
+// 更新 issue，并 comment
+func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
-	f.edit(
-		updateIssue(false, *f.cf.Filename, *existIssue),
+	updatedIssue, err := f.edit(
+		updateIssue(true, f.cf.GetPreviousFilename(), *existIssue),
 		existIssue.GetNumber(),
 		"update",
 	)
+	if err != nil {
+		return nil, err
+	}
 
+	// comment
+	err = f.comment(existIssue)
+	if err != nil {
+		return nil, err
+	}
+	return updatedIssue, nil
+}
+
+func (f File) comment(issue *github.Issue) error {
+	// TODO 传入操作类型，对于 removed，仅 comment，不 @assigner
 	// comment
 	body := ""
 	bf := bytes.Buffer{}
 	bf.WriteString("maintainer: ")
-	for _, v := range existIssue.Assignees {
+	for _, v := range issue.Assignees {
 		bf.WriteString(fmt.Sprintf("@%s ", v.GetLogin()))
 	}
 	bf.WriteString(fmt.Sprintf("\nstatus: %s", f.cf.GetStatus()))
@@ -284,7 +268,7 @@ func (f File) update(existIssue *github.Issue) {
 		context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		f.PrNumber,
+		issue.GetNumber(),
 		comment)
 
 	if err != nil {
@@ -293,7 +277,7 @@ func (f File) update(existIssue *github.Issue) {
 			"status", "fail",
 			"file", f,
 			"err", err.Error())
-		return
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusCreated {
@@ -303,8 +287,9 @@ func (f File) update(existIssue *github.Issue) {
 			"status", "fail",
 			"statusCode", resp.StatusCode,
 			"body", string(body))
-		return
+		return err
 	}
+	return nil
 }
 
 func (f File) getFileHash() string {
@@ -315,15 +300,66 @@ func (f File) getFileHash() string {
 
 // 删除 issue 中的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
 func (f File) remove(preIssue *github.Issue) {
+	if preIssue == nil {
+		global.Sugar.Warnw("remove exist file issue",
+			"status", "has no match issue",
+			"file", f)
+		return
+	}
 	f.edit(
-		updateIssue(true, *f.cf.Filename, *preIssue),
+		updateIssue(true, f.cf.GetPreviousFilename(), *preIssue),
 		preIssue.GetNumber(),
 		"remove",
 	)
 }
 
-func (f File) edit(issue *github.IssueRequest, number int, option string) {
-	_, resp, err := global.Client.Issues.Edit(
+// 对于 renamed 文件，需要：
+// 1. 更新/创建 新的 issue
+// 2. 在旧的 issue 中移除对应的文件
+func (f File) rename(include config.Include, existIssue, preIssue *github.Issue) {
+	// 更新 issue
+	if existIssue != nil {
+		// preIssue 为空，则仅更新 existIssue
+		// 这种极端情况很难出现
+		if preIssue == nil {
+			f.update(existIssue)
+			global.Sugar.Warnw("renamed file issue",
+				"status", "has no match previous issue",
+				"file", f)
+			return
+		}
+		// existIssue 和 preIssue 是同一个 issue
+		if existIssue.GetNumber() == preIssue.GetNumber() {
+			// 由于是同一个 issue，可以一次性完成更新，移除
+			updatedIssue, err := f.edit(
+				updateIssueRequest(true, f.cf.GetPreviousFilename(), updateIssue(false, *f.cf.Filename, *existIssue)),
+				existIssue.GetNumber(),
+				"renamed",
+			)
+			if err != nil {
+				return
+			}
+			// comment
+			f.comment(updatedIssue)
+		} else {
+			// 由于 existIssue 和 preIssue 不是同一个 issue
+			// 需要分别完成更新、移除
+			f.update(existIssue)
+			f.remove(preIssue)
+		}
+	} else {
+		// existIssue == nil，
+		// 此时，创建 issue，并在 preIssue 中移除旧文件名
+		f.create(include)
+		// 尝试移除
+		if preIssue != nil {
+			f.remove(preIssue)
+		}
+	}
+}
+
+func (f File) edit(issue *github.IssueRequest, number int, option string) (*github.Issue, error) {
+	updatedIssue, resp, err := global.Client.Issues.Edit(
 		context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
@@ -337,7 +373,7 @@ func (f File) edit(issue *github.IssueRequest, number int, option string) {
 			"title", issue.Title,
 			"body", issue.Body,
 			"err", err.Error())
-		return
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -349,8 +385,9 @@ func (f File) edit(issue *github.IssueRequest, number int, option string) {
 			"body", issue.Body,
 			"status code", resp.StatusCode,
 			"resp body", string(body))
-		return
+		return nil, err
 	}
+	return updatedIssue, nil
 }
 
 func getAssociatedFiles(prs []int) []File {
