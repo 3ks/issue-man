@@ -16,7 +16,7 @@ spec:
     owner: "1kib"
     repository: "new"
     detectionAt: "09:00"
-    commitIssue: 1
+    prIssue: 1
     maintainerTeam: "1mib"
   port: ":80"
   logLevel: "dev"

@@ -82,11 +82,13 @@ fork 仓库
 
 对有人维护的 issue，持续追踪：
 
-1. 获取并遍历 commit，从 HEAD 向前遍历，直至找到上次的 commit sha
-https://developer.github.com/v3/repos/commits/#list-commits-on-a-repository
+~~1. 获取并遍历 commit，从 HEAD 向前遍历，直至找到上次的 commit sha
+https://developer.github.com/v3/repos/commits/#list-commits-on-a-repository~~
 
-1. 获取 commit 对应的 PR（一个 PR 的多个 commit 去重）
-https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-commit
+~~1. 获取 commit 对应的 PR（一个 PR 的多个 commit 去重）
+https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-commit~~
+
+1. 获取并遍历 PR，直至找到上一次检测的 PR number
 
 1. 获取 PR 涉及的文件，根据路径和状态，对 issue 列表中管理的 issue 做出处理。
 对于重命名文件，可以根据 previous_filename 获取之前的文件名

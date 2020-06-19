@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/google/go-github/v30/github"
-	"io"
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
@@ -247,8 +246,9 @@ func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	return updatedIssue, nil
 }
 
+// 取 issue 的 number 和 assignees 调用 api 进行 comment
+// comment 内容为相关文件改动的提示
 func (f File) comment(issue *github.Issue) error {
-	// TODO 传入操作类型，对于 removed，仅 comment，不 @assigner
 	// comment
 	body := ""
 	bf := bytes.Buffer{}
@@ -256,10 +256,11 @@ func (f File) comment(issue *github.Issue) error {
 	for _, v := range issue.Assignees {
 		bf.WriteString(fmt.Sprintf("@%s ", v.GetLogin()))
 	}
+	// TODO 抽取配置
 	bf.WriteString(fmt.Sprintf("\nstatus: %s", f.cf.GetStatus()))
 	bf.WriteString(fmt.Sprintf("\npr: https://github.com/istio/istio.io/pull/%d", f.PrNumber))
 	bf.WriteString(fmt.Sprintf("\ndiff: https://github.com/istio/istio.io/pull/%d/files#diff-%s",
-		f.PrNumber, f.getFileHash()))
+		f.PrNumber, fmt.Sprintf("%x", md5.Sum([]byte(f.cf.GetFilename())))))
 	body = bf.String()
 
 	comment := &github.IssueComment{}
@@ -292,25 +293,29 @@ func (f File) comment(issue *github.Issue) error {
 	return nil
 }
 
-func (f File) getFileHash() string {
-	hash := md5.New()
-	_, _ = io.WriteString(hash, f.cf.GetFilename())
-	return fmt.Sprintf("%x", hash.Sum(nil))
-}
-
 // 删除 issue 中的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
-func (f File) remove(preIssue *github.Issue) {
-	if preIssue == nil {
+func (f File) remove(issue *github.Issue) {
+	if issue == nil {
 		global.Sugar.Warnw("remove exist file issue",
 			"status", "has no match issue",
 			"file", f)
 		return
 	}
-	f.edit(
-		updateIssue(true, f.cf.GetPreviousFilename(), *preIssue),
-		preIssue.GetNumber(),
+	updatedIssue, err := f.edit(
+		updateIssue(true, f.cf.GetPreviousFilename(), *issue),
+		issue.GetNumber(),
 		"remove",
 	)
+
+	if err != nil {
+		return
+	}
+
+	// comment
+	err = f.comment(updatedIssue)
+	if err != nil {
+		return
+	}
 }
 
 // 对于 renamed 文件，需要：
@@ -577,7 +582,7 @@ func getCommitIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		global.Conf.Repository.Spec.Workspace.CommitIssue,
+		global.Conf.Repository.Spec.Workspace.PRIssue,
 	)
 	if err != nil {
 		global.Sugar.Errorw("load commit issue",

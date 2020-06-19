@@ -44,7 +44,7 @@ type Repository struct {
 			Repository     string `yaml:"repository"`
 			DetectionAt    string `yaml:"detectionAt"`
 			MaintainerTeam string `yaml:"maintainerTeam"`
-			CommitIssue    int    `yaml:"commitIssue"`
+			PRIssue        int    `yaml:"prIssue"`
 		} `yaml:"workspace"` // 工作库
 		Port     string `yaml:"port"`
 		LogLevel string `yaml:"logLevel"`
