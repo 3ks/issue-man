@@ -25,6 +25,7 @@ func Start(conf config.Config) {
 		github.IssueCommentEvent,
 		github.MembershipEvent,
 		github.OrganizationEvent,
+		github.PullRequestEvent,
 	}
 
 	// 定时检测任务

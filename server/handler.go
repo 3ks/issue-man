@@ -28,10 +28,12 @@ func handler(c *gin.Context) {
 		org(p.(github.OrganizationPayload))
 	case github.MembershipPayload:
 		team(p.(github.MembershipPayload))
+	case github.PullRequestPayload:
+		pr(p.(github.PullRequestPayload))
 	default:
 	}
 
-	c.String(http.StatusOK, "")
+	c.JSON(http.StatusOK, nil)
 }
 
 // 手动调用更新函数
@@ -42,8 +44,9 @@ func Sync(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "unauthorized"})
 		return
 	}
+	sub := time.Now().Unix() - int64(reqUnix)
 	// 只允许 10 秒钟的偏差
-	if time.Now().Unix()-int64(reqUnix) > 10 {
+	if sub > 10 || sub < -10 {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "unauthorized"})
 		return
 	}
@@ -84,5 +87,16 @@ func org(payload github.OrganizationPayload) {
 	switch payload.Action {
 	case "member_added", "member_removed":
 		global.LoadMembers()
+	}
+}
+
+// 有 pull request 事件
+// 条件是 source 的仓库中有 pull request 被 close 且 merge 为 true，则触发检测方法，
+// 检测是否有 issue 需要更新
+func pr(payload github.PullRequestPayload) {
+	if payload.Repository.FullName == global.Conf.Repository.Spec.Source.GetFullName() {
+		if payload.Action == "closed" && payload.PullRequest.Merged {
+			syncIssues()
+		}
 	}
 }

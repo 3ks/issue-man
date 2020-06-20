@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+var (
+	// syncIssues 可以通过多种方式触发
+	// 这里加一个锁，以避免重复检测提示的情况
+	lock sync.Mutex
+)
+
 // job
 // 目前主要完成状态持续时间的检测，并提醒
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
@@ -69,8 +75,11 @@ func job() {
 	}
 }
 
-//
 func syncIssues() {
+	// syncIssues 可以通过多种方式触发
+	// 这里加一个锁，以避免重复检测提示的情况
+	lock.Lock()
+	defer lock.Unlock()
 	commitIssue := getCommitIssue()
 	if commitIssue == nil {
 		return
