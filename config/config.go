@@ -42,9 +42,13 @@ type Repository struct {
 		Workspace struct {
 			Owner          string `yaml:"owner"`
 			Repository     string `yaml:"repository"`
-			DetectionAt    string `yaml:"detectionAt"`
 			MaintainerTeam string `yaml:"maintainerTeam"`
-			PRIssue        int    `yaml:"prIssue"`
+			Detection      struct {
+				At              string   `yaml:"at"`
+				PRIssue         int      `yaml:"prIssue"`
+				NeedLabel       []string `yaml:"needLabel"`
+				DeprecatedLabel []string `yaml:"deprecatedLabel"`
+			} `yaml:"detection"`
 		} `yaml:"workspace"` // 工作库
 		Port     string `yaml:"port"`
 		LogLevel string `yaml:"logLevel"`

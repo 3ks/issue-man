@@ -15,9 +15,15 @@ spec:
   workspace:
     owner: "1kib"
     repository: "new"
-    detectionAt: "09:00"
-    prIssue: 1
     maintainerTeam: "1mib"
+    detection:
+      at: "09:00"
+      prIssue: 1
+      needLabel:
+      - "status/waiting-for-update"
+      - "status/need-sync"
+      deprecatedLabel:
+      - "status/need-confirm"
   port: ":80"
   logLevel: "dev"
   verbose: false
@@ -32,7 +38,6 @@ spec:
     - "md"
     - "html"
   labels:
-  - "status/pending"
   - "kind/page"
   assignees:
   - "3ks"
@@ -46,24 +51,30 @@ spec:
 #    label: "priority/P0"
   - path: "_index"
     labels:
+    - "status/pending"
     - "priority/P0"
   - path: "content/en/docs/"
     labels:
+    - "status/pending"
     - "priority/P1"
     exclude:
     - path: "content/en/docs/reference/commands"
     - path: "content/en/docs/reference/config"
   - path: "content/en/faq/"
     labels:
+    - "status/pending"
     - "priority/P2"
   - path: "content/en/blog/"
     labels:
+    - "status/pending"
     - "priority/P3"
   - path: "content/en/news/"
     labels:
+    - "status/pending"
     - "priority/P3"
   - path: "content/en/about/"
     labels:
+    - "status/pending"
     - "priority/P4"
 ---
 apiVersion: "v1"

@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
+	"issue-man/tools"
 	"net/http"
 	"path"
 	"sort"
@@ -29,7 +30,7 @@ import (
 func Init(conf config.Config) {
 	fs, err := getUpstreamFiles()
 	if err != nil {
-		global.Sugar.Errorw("get upstream files",
+		global.Sugar.Errorw("Get upstream files",
 			"status", "fail",
 			"err", err.Error(),
 		)
@@ -56,7 +57,7 @@ func getUpstreamFiles() (files map[string]string, err error) {
 	)
 	if err != nil {
 		global.Sugar.Errorw("load upstream files",
-			"call api", "get tree",
+			"call api", "Get tree",
 			"err", err.Error(),
 		)
 		return nil, err
@@ -78,7 +79,7 @@ func getUpstreamFiles() (files map[string]string, err error) {
 			continue
 		}
 	}
-	//global.Sugar.Debugw("get files",
+	//global.Sugar.Debugw("Get files",
 	//	"data", files)
 	return files, nil
 }
@@ -135,7 +136,7 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 		}
 		opt.Page++
 	}
-	global.Sugar.Debugw("get issues",
+	global.Sugar.Debugw("Get issues",
 		"data", issues)
 
 	return issues, nil
@@ -153,7 +154,7 @@ func genAndCreateIssues(fs map[string]string) {
 	conf := *global.Conf
 	existIssues, err := getIssues()
 	if err != nil {
-		global.Sugar.Errorw("get issues files",
+		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
 			"err", err.Error(),
 		)
@@ -300,10 +301,6 @@ func updateIssueRequest(remove bool, file string, exist *github.IssueRequest) *g
 
 // 根据已存在的 issue 和配置，返回更新后的 IssueRequest
 func updateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
-	const (
-		CHECK = "status/need-confirm"
-	)
-
 	length := 0
 	update = &github.IssueRequest{}
 	update.Title = exist.Title
@@ -315,29 +312,18 @@ func updateIssue(remove bool, file string, exist github.Issue) (update *github.I
 		update.Milestone = exist.Milestone.Number
 	}
 	if exist.Labels != nil {
-		update.Labels = convertLabel(exist.Labels)
+		update.Labels = tools.Convert.Label(exist.Labels)
 	}
 	if exist.Assignees != nil {
-		update.Assignees = convertAssignees(exist.Assignees)
+		update.Assignees = tools.Convert.Assignees(exist.Assignees)
 	}
 
-	// 如果文件列表为 0，则添加特殊 label
+	// 如果文件列表为 0，则添加需要检查的 Label
 	// 反之则移除
 	if length == 0 {
-		tmp := append(*update.Labels, CHECK)
-		update.Labels = &tmp
+		update.Labels = tools.Convert.LabelAdd(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
 	} else {
-		index := 0
-		tmp := update.GetLabels()
-		for _, v := range tmp {
-			if v == CHECK {
-				continue
-			}
-			tmp[index] = v
-			index++
-		}
-		tmp = tmp[:index]
-		update.Labels = &tmp
+		update.Labels = tools.Convert.LabelRemove(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
 	}
 	return
 }
@@ -347,36 +333,10 @@ func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new.Title = parseTitleFromPath(file)
 	new.Body, _ = genBody(false, file, "")
 
-	// 创建新切片
-	labels := append(*copySlice(global.Conf.IssueCreate.Spec.Labels), include.Labels...)
-	labelMap := make(map[string]bool)
-	for _, v := range labels {
-		labelMap[v] = true
-	}
-	index := 0
-	// label 去重
-	for k := range labelMap {
-		labels[index] = k
-		index++
-	}
-
-	new.Labels = &labels
-	new.Assignees = copySlice(global.Conf.IssueCreate.Spec.Assignees)
-	new.Milestone = copyInt(global.Conf.IssueCreate.Spec.Milestone)
+	new.Labels = tools.Convert.LabelAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
+	new.Assignees = tools.Get.String(global.Conf.IssueCreate.Spec.Assignees)
+	new.Milestone = tools.Get.Int(global.Conf.IssueCreate.Spec.Milestone)
 	return
-}
-
-func copySlice(src []string) *[]string {
-	dst := make([]string, len(src))
-	copy(dst, src)
-	return &dst
-}
-
-func copyInt(src int) *int {
-	if src == 0 {
-		return nil
-	}
-	return &src
 }
 
 // parseTitleFromPath 解析路径，生成 title

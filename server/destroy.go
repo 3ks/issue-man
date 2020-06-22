@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
+	"issue-man/tools"
 	"net/http"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 func Destroy(conf config.Config) {
 	issues, err := getIssues()
 	if err != nil {
-		global.Sugar.Errorw("get issues files",
+		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
 			"err", err.Error(),
 		)
@@ -36,7 +37,7 @@ func Destroy(conf config.Config) {
 		go func(issue *github.Issue) {
 			defer wg.Done()
 			lock <- 1
-			issueRequest := issueToRequest(issue)
+			issueRequest := tools.Convert.Issue(issue)
 			state := "close"
 			issueRequest.State = &state
 			_, resp, err := global.Client.Issues.Edit(
@@ -71,49 +72,4 @@ func Destroy(conf config.Config) {
 
 	global.Sugar.Infow("destroy issues",
 		"step", "done")
-}
-
-// issueToRequest
-// 将 github.Issue（API Response）转换为 github.IssueRequest（API Request）
-func issueToRequest(issue *github.Issue) (ir *github.IssueRequest) {
-	ir = &github.IssueRequest{
-		Title: issue.Title,
-		Body:  issue.Body,
-		State: issue.State,
-		//Milestone: issue.Milestone.Number,
-		//Labels:    convertLabel(issue.Labels),
-		//Assignees: convertAssignees(issue.Assignees),
-	}
-	if issue.Milestone != nil {
-		ir.Milestone = issue.Milestone.Number
-	}
-	if issue.Labels != nil {
-		ir.Labels = convertLabel(issue.Labels)
-	}
-	if issue.Assignees != nil {
-		ir.Assignees = convertAssignees(issue.Assignees)
-	}
-	return
-}
-
-// convertLabel
-// 提取 github.Label 结构体内的 label名 字段
-// 并组合为符合调用 API 要求的格式
-func convertLabel(labels []*github.Label) *[]string {
-	lb := make([]string, len(labels))
-	for k, v := range labels {
-		lb[k] = *v.Name
-	}
-	return &lb
-}
-
-// convertAssignees
-// 提取 github.User 结构体内的用户名字段
-// 并组合为符合调用 API 要求的格式
-func convertAssignees(assignees []*github.User) *[]string {
-	as := make([]string, len(assignees))
-	for k, v := range assignees {
-		as[k] = *v.Login
-	}
-	return &as
 }

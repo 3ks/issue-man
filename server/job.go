@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
+	"issue-man/tools"
 	"net/http"
 	"strings"
 	"sync"
@@ -87,7 +88,7 @@ func syncIssues() {
 	// 获取 commit 列表
 	commits := getRangeCommits(getShaFromCommitIssue(*commitIssue.Body))
 	if len(commits) == 0 {
-		global.Sugar.Warnw("get issues files",
+		global.Sugar.Warnw("Get issues files",
 			"status", "abnormal",
 			"length", "0",
 		)
@@ -107,7 +108,7 @@ func syncIssues() {
 	// 获取现有 issue 列表
 	existIssues, err := getIssues()
 	if err != nil {
-		global.Sugar.Errorw("get issues files",
+		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
 			"err", err.Error(),
 		)
@@ -239,7 +240,7 @@ func (f File) create(include config.Include) {
 func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
 	updatedIssue, err := f.edit(
-		updateIssue(true, f.cf.GetPreviousFilename(), *existIssue),
+		updateIssue(false, f.cf.GetFilename(), *existIssue),
 		existIssue.GetNumber(),
 		"update",
 	)
@@ -247,12 +248,23 @@ func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 		return nil, err
 	}
 
-	// comment
-	err = f.comment(existIssue)
-	if err != nil {
-		return nil, err
+	// 仅 comment 特定状态（label）下的 issue
+	if f.commentVerify(existIssue) {
+		// comment
+		err = f.comment(existIssue)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return updatedIssue, nil
+}
+
+func (f File) commentVerify(issue *github.Issue) bool {
+	if issue == nil || issue.Labels == nil {
+		return false
+	}
+
+	return false
 }
 
 // 取 issue 的 number 和 assignees 调用 api 进行 comment
@@ -538,7 +550,7 @@ func getRangeCommits(preSHA string) []string {
 				return tmp
 			}
 			if len(commits) > 1000 {
-				global.Sugar.Error("get commit list",
+				global.Sugar.Error("Get commit list",
 					"abnormal list length", len(commits))
 				return nil
 			}
@@ -613,21 +625,21 @@ func getCommitIssue() *github.Issue {
 	return is
 }
 
-func updateCommitIssue(is *github.Issue) {
-	if is.Body == nil {
+func updateCommitIssue(issue *github.Issue) {
+	if issue.Body == nil {
 		global.Sugar.Errorw("update commit issue",
 			"confirm", "failed",
 			"cause", "body can not be nil",
-			"data", is,
+			"data", issue,
 		)
 		return
 	}
-	ir := issueToRequest(is)
-	is, resp, err := global.Client.Issues.Edit(context.TODO(),
+	issueRequest := tools.Convert.Issue(issue)
+	issue, resp, err := global.Client.Issues.Edit(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,
-		*is.Number,
-		ir,
+		*issue.Number,
+		issueRequest,
 	)
 	if err != nil {
 		global.Sugar.Errorw("update commit issue",
@@ -645,5 +657,5 @@ func updateCommitIssue(is *github.Issue) {
 		)
 		return
 	}
-	global.Sugar.Info("update commit issue", "commit", is.Body)
+	global.Sugar.Info("update commit issue", "commit", issue.Body)
 }
