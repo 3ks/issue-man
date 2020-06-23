@@ -3,6 +3,7 @@ package operation
 import (
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/global"
+	"issue-man/tools"
 )
 
 // is 是一个指令 map，其中：
@@ -43,10 +44,10 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 		"info", info)
 
 	// 权限检查
-	if !CheckPermission(flow.Spec.Rules.Permissions, info) {
+	if !tools.Verify.Permission(flow.Spec.Rules.Permissions, info.Login, info.Assignees) {
 		global.Sugar.Infow("do instruct",
 			"req_id", info.ReqID,
-			"step", "CheckPermission",
+			"step", "Permission",
 			"status", "fail",
 			"info", info,
 			"require", flow.Spec.Rules.Permissions)
@@ -62,7 +63,7 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	}
 
 	// 标签（状态）检查
-	if !CheckLabel(flow.Spec.Rules.Labels, info.Labels) {
+	if !tools.Verify.HasLabel(flow.Spec.Rules.Labels, info.Labels...) {
 		global.Sugar.Infow("do instruct",
 			"req_id", info.ReqID,
 			"step", "CheckLabel",
@@ -81,7 +82,7 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	}
 
 	// 数量检查
-	if !CheckCount(info, flow.Spec.Action) {
+	if !tools.Verify.LabelCount(info.Login, flow.Spec.Action.AddLabels, flow.Spec.Action.AddLabelsLimit) {
 		global.Sugar.Infow("do instruct",
 			"req_id", info.ReqID,
 			"step", "CheckCount",

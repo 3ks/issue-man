@@ -65,15 +65,12 @@ func (c convertFunctions) LabelAdd(label *[]string, add ...string) *[]string {
 		newSlice := make([]string, 0)
 		label = &newSlice
 	}
-	tmp := make(map[string]bool)
-	for _, v := range *label {
-		tmp[v] = true
-	}
+	labelMap := c.StringToMap(*label)
 	for _, v := range add {
-		tmp[v] = true
+		labelMap[v] = true
 	}
 
-	return c.MapToString(tmp)
+	return c.MapToString(labelMap)
 }
 
 // LabelRemove
@@ -82,15 +79,12 @@ func (c convertFunctions) LabelRemove(label *[]string, remove ...string) *[]stri
 	if label == nil {
 		return nil
 	}
-	tmp := make(map[string]bool)
-	for _, v := range *label {
-		tmp[v] = true
-	}
+	labelMap := c.StringToMap(*label)
 	for _, v := range remove {
-		delete(tmp, v)
+		delete(labelMap, v)
 	}
 
-	return c.MapToString(tmp)
+	return c.MapToString(labelMap)
 }
 
 // MapToString
@@ -104,4 +98,14 @@ func (c convertFunctions) MapToString(source map[string]bool) (array *[]string) 
 	}
 	sort.Strings(tmp)
 	return &tmp
+}
+
+// MapToString
+// 将 map 转换为 slice
+func (c convertFunctions) StringToMap(source []string) map[string]bool {
+	data := make(map[string]bool)
+	for _, v := range source {
+		data[v] = true
+	}
+	return data
 }

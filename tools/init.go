@@ -11,6 +11,7 @@ var (
 	Get      getFunctions
 	Parse    parseFunctions
 	Generate generateFunctions
+	Issue    issueFunctions
 )
 
 type (
@@ -27,7 +28,10 @@ type (
 	getFunctions byte
 
 	// 封装了一些生成内容的方法
-	// generate 和 get 方法的区别是， get 用于生成内建数据类型
-	// generate 生成的内容一般是自定义 struct 类型
+	// generate 和 get 方法的区别是， get 处理过程较为简单，一般只涉及内建数据类型
+	// generate 处理过程略微复杂一点，可能会涉及到自定义 struct
 	generateFunctions byte
+
+	// 封装了 github issue 操作相关的方法
+	issueFunctions byte
 )

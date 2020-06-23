@@ -1,4 +1,4 @@
-package server
+package operation
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
+	"issue-man/server"
 	"issue-man/tools"
 	"net/http"
 	"strings"
@@ -17,12 +18,12 @@ import (
 )
 
 var (
-	// syncIssues 可以通过多种方式触发
+	// syncIssues() 可以通过多种方式触发
 	// 这里加一个锁，以避免重复检测提示的情况
 	lock sync.Mutex
 )
 
-// job
+// Sync
 // 目前主要完成状态持续时间的检测，并提醒
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
 //      每天定时检测，满足相关条件时，则执行一些操作
@@ -33,7 +34,7 @@ var (
 // 3. 遍历 commit，存储到栈内，直至第二步匹配的 commit。
 // 4. pop commit 栈，分析涉及的文件，是否存在匹配的 issue
 // 5. 对匹配的 issue，comment 提示，该 issue 对应的某个文件在哪次 commit 有变动
-func job() {
+func Sync() {
 	global.Sugar.Info("loaded jobs", "list", global.Jobs)
 	// 解析检测时间
 	t, err := time.ParseInLocation("2006-01-02 15:04",
@@ -81,7 +82,7 @@ func syncIssues() {
 	// 这里加一个锁，以避免重复检测提示的情况
 	lock.Lock()
 	defer lock.Unlock()
-	commitIssue := getCommitIssue()
+	commitIssue := getPrIssue()
 	if commitIssue == nil {
 		return
 	}
@@ -106,7 +107,7 @@ func syncIssues() {
 	files := getAssociatedFiles(prs)
 
 	// 获取现有 issue 列表
-	existIssues, err := getIssues()
+	existIssues, err := server.getIssues()
 	if err != nil {
 		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
@@ -137,8 +138,8 @@ func syncIssues() {
 					lock <- 1
 					file.Sync(
 						include,
-						existIssues[*parseTitleFromPath(file.cf.GetFilename())],
-						existIssues[*parseTitleFromPath(file.cf.GetPreviousFilename())],
+						existIssues[*tools.Generate.Title(file.cf.GetFilename())],
+						existIssues[*tools.Generate.Title(file.cf.GetPreviousFilename())],
 					)
 					// 文件已处理
 					return
@@ -208,7 +209,7 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 
 // 更新 issue，并 comment 如果 issue 不存在，则创建
 func (f File) create(include config.Include) {
-	issue := newIssue(include, *f.cf.Filename)
+	issue := server.newIssue(include, *f.cf.Filename)
 	_, resp, err := global.Client.Issues.Create(
 		context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
@@ -240,7 +241,7 @@ func (f File) create(include config.Include) {
 func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
 	updatedIssue, err := f.edit(
-		updateIssue(false, f.cf.GetFilename(), *existIssue),
+		server.updateIssue(false, f.cf.GetFilename(), *existIssue),
 		existIssue.GetNumber(),
 		"update",
 	)
@@ -323,7 +324,7 @@ func (f File) remove(issue *github.Issue) {
 		return
 	}
 	updatedIssue, err := f.edit(
-		updateIssue(true, f.cf.GetPreviousFilename(), *issue),
+		server.updateIssue(true, f.cf.GetPreviousFilename(), *issue),
 		issue.GetNumber(),
 		"remove",
 	)
@@ -358,7 +359,7 @@ func (f File) rename(include config.Include, existIssue, preIssue *github.Issue)
 		if existIssue.GetNumber() == preIssue.GetNumber() {
 			// 由于是同一个 issue，可以一次性完成更新，移除
 			updatedIssue, err := f.edit(
-				updateIssueRequest(true, f.cf.GetPreviousFilename(), updateIssue(false, *f.cf.Filename, *existIssue)),
+				server.updateIssueRequest(true, f.cf.GetPreviousFilename(), server.updateIssue(false, *f.cf.Filename, *existIssue)),
 				existIssue.GetNumber(),
 				"renamed",
 			)
@@ -599,7 +600,7 @@ func getLatestCommit() string {
 	return commits[0].GetSHA()
 }
 
-func getCommitIssue() *github.Issue {
+func getPrIssue() *github.Issue {
 	is, resp, err := global.Client.Issues.Get(context.TODO(),
 		global.Conf.Repository.Spec.Workspace.Owner,
 		global.Conf.Repository.Spec.Workspace.Repository,

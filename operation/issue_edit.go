@@ -71,8 +71,8 @@ func IssueEdit(info Info, flow config.IssueComment) {
 		hc.Login = info.Login
 		// 这可能是一个修改重置时间的指令，解析其重置时间
 		//if flow.JobName == "reset" {
-		//	if job, ok := global.Jobs[flow.JobName]; ok {
-		//		resetDate, err := getResetDate(info.Owner, info.Repository, info.IssueNumber, flow.CurrentLabel, int(job.In), int(flow.Delay), flow.Name)
+		//	if Sync, ok := global.Jobs[flow.JobName]; ok {
+		//		resetDate, err := getResetDate(info.Owner, info.Repository, info.IssueNumber, flow.CurrentLabel, int(Sync.In), int(flow.Delay), flow.Name)
 		//		if err != nil {
 		//			fmt.Printf("get reset date for instruct failed. instruct: %v, err: %v\n", flow.Name, err.Error())
 		//			return

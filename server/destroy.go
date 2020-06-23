@@ -42,8 +42,8 @@ func Destroy(conf config.Config) {
 			issueRequest.State = &state
 			_, resp, err := global.Client.Issues.Edit(
 				context.TODO(),
-				global.Conf.Repository.Spec.Workspace.Owner,
-				global.Conf.Repository.Spec.Workspace.Repository,
+				tools.Get.WorkspaceOwner(),
+				tools.Get.WorkspaceRepository(),
 				*issue.Number,
 				issueRequest,
 			)

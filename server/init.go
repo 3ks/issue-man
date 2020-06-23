@@ -3,24 +3,22 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/google/go-github/v30/github"
 	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
+	"issue-man/operation"
 	"issue-man/tools"
 	"net/http"
-	"path"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
 // 注意：这个 Init 并不是传统的初始化函数！
-// Init 根据上游仓库和 IssueCreate 规则，在任务仓库创建初始化 issue
+// Init 根据上游仓库的内容和 IssueCreate 规则，在工作仓库创建初始化 issue
 // 获取 path 获取文件，
 // 1. 根据规则（路径）获取全部上游文件
 // 2. 根据规则（label）获取全部 issue，
@@ -38,9 +36,9 @@ func Init(conf config.Config) {
 	}
 	// init 始终基于最新 commit 来完成，
 	// 所以这里直接更新 commit issue body
-	commitIssue := getCommitIssue()
-	commitIssue.Body = genBodyBySha(getLatestCommit())
-	defer updateCommitIssue(commitIssue)
+	commitIssue := operation.getPrIssue()
+	commitIssue.Body = operation.genBodyBySha(operation.getLatestCommit())
+	defer operation.updateCommitIssue(commitIssue)
 	genAndCreateIssues(fs)
 }
 
@@ -168,18 +166,18 @@ func genAndCreateIssues(fs map[string]string) {
 			// 符合条件的文件
 			if global.Conf.IssueCreate.SupportFile(v, file) {
 				// 根据 title 判断，如果已存在相关 issue，则更新
-				exist := existIssues[*parseTitleFromPath(file)]
+				exist := existIssues[*tools.Generate.Title(file)]
 				if exist != nil {
 					updates[*exist.Number] = updateIssue(false, file, *exist)
 				} else {
 					// 不存在，则新建，新建也分两种情况
 					// 有多个新文件属于一个 issue
-					create := creates[*parseTitleFromPath(file)]
+					create := creates[*tools.Generate.Title(file)]
 					if create != nil {
-						creates[*parseTitleFromPath(file)] = updateNewIssue(file, create)
+						creates[*tools.Generate.Title(file)] = updateNewIssue(file, create)
 					} else {
 						// 是一个新的新 issue
-						creates[*parseTitleFromPath(file)] = newIssue(v, file)
+						creates[*tools.Generate.Title(file)] = newIssue(v, file)
 					}
 				}
 				// 文件已处理，break 内层循环
@@ -289,13 +287,13 @@ func genAndCreateIssues(fs map[string]string) {
 // 根据已存在的 issue 和配置，返回更新后的 issue
 // 仅更新 body
 func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueRequest {
-	exist.Body, _ = genBody(false, file, exist.GetBody())
+	exist.Body, _ = tools.Generate.Body(false, file, exist.GetBody())
 	return exist
 }
 
 // 更新 issue request 的 body
 func updateIssueRequest(remove bool, file string, exist *github.IssueRequest) *github.IssueRequest {
-	exist.Body, _ = genBody(remove, file, exist.GetBody())
+	exist.Body, _ = tools.Generate.Body(remove, file, exist.GetBody())
 	return exist
 }
 
@@ -304,7 +302,7 @@ func updateIssue(remove bool, file string, exist github.Issue) (update *github.I
 	length := 0
 	update = &github.IssueRequest{}
 	update.Title = exist.Title
-	update.Body, length = genBody(remove, file, *exist.Body)
+	update.Body, length = tools.Generate.Body(remove, file, *exist.Body)
 
 	// 对于已存在的 issue
 	// label、assignees、milestone 不会变化
@@ -330,122 +328,11 @@ func updateIssue(remove bool, file string, exist github.Issue) (update *github.I
 
 func newIssue(include config.Include, file string) (new *github.IssueRequest) {
 	new = &github.IssueRequest{}
-	new.Title = parseTitleFromPath(file)
-	new.Body, _ = genBody(false, file, "")
+	new.Title = tools.Generate.Title(file)
+	new.Body, _ = tools.Generate.Body(false, file, "")
 
 	new.Labels = tools.Convert.LabelAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
 	new.Assignees = tools.Get.String(global.Conf.IssueCreate.Spec.Assignees)
 	new.Milestone = tools.Get.Int(global.Conf.IssueCreate.Spec.Milestone)
-	return
-}
-
-// parseTitleFromPath 解析路径，生成 title
-// 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md，预期 title 为： faq/setup
-// 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
-// 不会出现返回 nil 的情况，最差情况下返回值为 ""
-// TODO 以目录、文件为单位（配置化）进行划分
-func parseTitleFromPath(p string) (title *string) {
-	tmp := ""
-	title = &tmp
-	if strings.ReplaceAll(path.Base(p), path.Ext(p), "") == "_index" {
-		tmp = "Architecture"
-		return
-	}
-	p = strings.Replace(p, "content/en/", "", 1)
-	t := strings.Split(p, "/")
-	tmp = strings.Join(t[:len(t)-1], "/")
-	return
-}
-
-// parseURLFormPath
-// 根据 PATH 生成站点的  HTTPS URL
-func parseURLFormPath(p string) (source, translate string) {
-	// 去除两端路径
-	t := strings.Split(strings.Replace(p, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
-	tmp := path.Join(t[:len(t)-1]...)
-
-	sourceSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Source.Site, "/"), "https://"), "http://")
-	translateSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Translate.Site, "/"), "https://"), "http://")
-
-	return fmt.Sprintf("https://%s", path.Join(sourceSite, tmp)), fmt.Sprintf("https://%s", path.Join(translateSite, tmp))
-}
-
-// genBody 根据文件名和旧的 body，生成新的 body
-func genBody(remove bool, file, oldBody string) (body *string, length int) {
-	t := ""
-	body = &t
-	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
-
-	// map 存储去重
-	files := make(map[string]string)
-	files[file] = file
-	lines := strings.Split(oldBody, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "content/en") { // TODO
-			// 去掉旧文件的 https://xxx.com 前缀，后面会重新生成
-			tmp := strings.Split(line, "content/en")
-			if len(tmp) != 2 {
-				continue
-			}
-			line = fmt.Sprintf("content/en%s", tmp[1])
-			files[line] = line
-		}
-	}
-	// 用于移除某个文件的情况
-	if remove {
-		delete(files, file)
-	}
-
-	length = len(files)
-	fs := make([]string, len(files))
-	// map 转 slice 以便排序
-	count := 0
-	for k := range files {
-		fs[count] = k
-		count++
-	}
-	// 排序
-	sort.Slice(fs, func(i, j int) bool {
-		return fs[i] < fs[j]
-	})
-
-	source, translate := parseURLFormPath(file)
-
-	// 构造 body
-	bf := bytes.Buffer{}
-	// _index 类文件无统一页面
-	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
-	} else {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
-	}
-	for _, v := range fs {
-		if v == "" {
-			continue
-		}
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
-			global.Conf.Repository.Spec.Source.Owner,
-			global.Conf.Repository.Spec.Source.Repository,
-			v))
-	}
-
-	bf.WriteString("\n")
-
-	// _index 类文件无统一页面
-	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## Translate\n\n#### Files\n\n"))
-	} else {
-		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s\n\n#### Files\n\n", translate))
-	}
-	for _, v := range fs {
-		if v == "" {
-			continue
-		}
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
-			global.Conf.Repository.Spec.Translate.Owner,
-			global.Conf.Repository.Spec.Translate.Repository,
-			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
-	}
-	t = bf.String()
 	return
 }

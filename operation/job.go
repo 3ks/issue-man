@@ -18,9 +18,9 @@ import (
 // 获取 events
 // 判断状态、时间。已经处于该状态的则忽略（todo 或其它策略）
 // 拼装 Flow 格式的对象，调用相关方法，更新 issue 或 card
-func Job(fullName string, job config.Job) {
-	fmt.Printf("====================\ndo job: %s\n", job.Name)
-	defer fmt.Printf("====================\nfinished job: %s\n", job.Name)
+func Job(fullName string, Sync config.Job) {
+	fmt.Printf("====================\ndo Sync: %s\n", Sync.Name)
+	defer fmt.Printf("====================\nfinished Sync: %s\n", Sync.Name)
 	ss := strings.SplitN(fullName, "/", -1)
 	if len(ss) != 2 {
 		fmt.Printf("unknown repository: %s\n", fullName)
@@ -28,12 +28,12 @@ func Job(fullName string, job config.Job) {
 	}
 
 	// 获取满足条件的 issue
-	issues, err := getIssues(ss[0], ss[1], job.Labels)
+	issues, err := getIssues(ss[0], ss[1], Sync.Labels)
 	if err != nil {
-		fmt.Printf("get issues list with label failed. label: %v, err: %v\n", job.Labels, err.Error())
+		fmt.Printf("get issues list with label failed. label: %v, err: %v\n", Sync.Labels, err.Error())
 		return
 	}
-	fmt.Printf("get issues with label: %#v. list: %#v\n", job.Labels, issues)
+	fmt.Printf("get issues with label: %#v. list: %#v\n", Sync.Labels, issues)
 
 	for _, v := range issues {
 		lm := make(map[string]bool)
@@ -44,7 +44,7 @@ func Job(fullName string, job config.Job) {
 			lm[*label.Name] = true
 		}
 		// 如果已经有目标 label，则跳过？
-		for _, label := range job.TargetLabels {
+		for _, label := range Sync.TargetLabels {
 			// 缺少任何一个 label，则需要处理，不 continue
 			if _, ok := lm[label]; !ok {
 				skip = false
@@ -55,16 +55,16 @@ func Job(fullName string, job config.Job) {
 		}
 
 		// 告警
-		if job.Name == "warn" {
+		if Sync.Name == "warn" {
 			// 处于 waiting-for-pr 状态 in 天后，计算预期重置时间，并提示，并添加 stale。
 			// 判断进入该状态的时长
-			createdAt, err := getLabelCreateAt(ss[0], ss[1], *v.Number, job.Labels)
+			createdAt, err := getLabelCreateAt(ss[0], ss[1], *v.Number, Sync.Labels)
 			if err != nil {
-				fmt.Printf("get label create at failed. label: %v, err: %v\n", job.Labels, err.Error())
+				fmt.Printf("get label create at failed. label: %v, err: %v\n", Sync.Labels, err.Error())
 				continue
 			}
 			// 预期打上 stale 的时间
-			exceptedTime := createdAt.AddDate(0, 0, int(job.In))
+			exceptedTime := createdAt.AddDate(0, 0, int(Sync.In))
 
 			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will not label: %v\n", createdAt.String(), exceptedTime.String(), time.Now().Sub(exceptedTime) < 0)
 			// 暂不添加 stale 标签，下次一定
@@ -74,7 +74,7 @@ func Job(fullName string, job config.Job) {
 			}
 
 			// 由于此时还没有 stale 标签，所以，重置时间是当前时间 + reset 的时间
-			info, flow := assemblyData(*v, job, fullName)
+			info, flow := assemblyData(*v, Sync, fullName)
 			assign := ""
 			if len(v.Assignees) > 0 {
 				assign = *v.Assignees[0].Login
@@ -88,9 +88,9 @@ func Job(fullName string, job config.Job) {
 			flow.SuccessFeedback = ""
 			// 添加标签，后续根据标签和延长指令来计算重置时间
 			IssueEdit(info, flow)
-			fmt.Printf("warn comment issue number: %v, body: %v\n", info.IssueNumber, hc.HandComment(job.Feedback))
+			fmt.Printf("warn comment issue number: %v, body: %v\n", info.IssueNumber, hc.HandComment(Sync.Feedback))
 			// comment 提示
-			IssueComment(info, hc.HandComment(job.Feedback))
+			IssueComment(info, hc.HandComment(Sync.Feedback))
 		} else {
 
 			// reset 重置/告警
@@ -99,8 +99,8 @@ func Job(fullName string, job config.Job) {
 			// 如果符合重置条件，则重置，并 continue
 			// 否则，再判断是否符合提醒条件，如果符合，则提醒
 			// 获取 events，判断状态持续时间。
-			ins := global.Instructions[job.InstructName]
-			resetDate, err := getResetDate(ss[0], ss[1], *v.Number, job.Labels, int(job.In), int(ins.Delay), ins.Name)
+			ins := global.Instructions[Sync.InstructName]
+			resetDate, err := getResetDate(ss[0], ss[1], *v.Number, Sync.Labels, int(Sync.In), int(ins.Delay), ins.Name)
 			if err != nil {
 				fmt.Printf("get and judge issue event failed. err: %v\n", err.Error())
 				continue
@@ -111,7 +111,7 @@ func Job(fullName string, job config.Job) {
 			if time.Now().Sub(resetDate) > 0 {
 				// 需要做点啥，满足条件的，执行操作
 				// 拼装一个 info 和 flow，直接调用函数
-				info, flow := assemblyData(*v, job, fullName)
+				info, flow := assemblyData(*v, Sync, fullName)
 				fmt.Printf("assembly data. info: %#v, flow: %#v\n", info, flow)
 
 				// 发送 Update Issue 请求（如果有的话）
@@ -127,7 +127,7 @@ func Job(fullName string, job config.Job) {
 				assign = *v.Assignees[0].Login
 			}
 			// （可能需要）提醒
-			remind(ss[0], ss[1], *v.Number, assign, job.InstructName, job.WarnFeedback, resetDate)
+			remind(ss[0], ss[1], *v.Number, assign, Sync.InstructName, Sync.WarnFeedback, resetDate)
 		}
 	}
 }
@@ -182,8 +182,8 @@ func remind(owner, repository string, issueNumber int, login, instructName, warn
 	IssueComment(info, hc.HandComment(warn))
 }
 
-// 为 job 拼装一个 info 和 flow
-func assemblyData(issue gg.Issue, job config.Job, fullName string) (info Info, flow config.Flow) {
+// 为 Sync 拼装一个 info 和 flow
+func assemblyData(issue gg.Issue, Sync config.Job, fullName string) (info Info, flow config.Flow) {
 	// info
 	ss := strings.SplitN(fullName, "/", -1)
 	info.Owner = ss[0]
@@ -208,7 +208,7 @@ func assemblyData(issue gg.Issue, job config.Job, fullName string) (info Info, f
 	info.State = *issue.State
 
 	// assign 策略
-	switch job.AssigneesPolicy {
+	switch Sync.AssigneesPolicy {
 	case "@remove_all":
 		info.Assignees = make([]string, 0)
 	case "@keep_all":
@@ -221,11 +221,11 @@ func assemblyData(issue gg.Issue, job config.Job, fullName string) (info Info, f
 
 	// flow
 	flow.Close = false
-	flow.RemoveLabel = job.RemoveLabels
-	flow.TargetLabel = job.TargetLabels
-	flow.SuccessFeedback = job.Feedback
-	flow.CurrentColumnID = job.CurrentColumnID
-	flow.TargetColumnID = job.TargetColumnID
+	flow.RemoveLabel = Sync.RemoveLabels
+	flow.TargetLabel = Sync.TargetLabels
+	flow.SuccessFeedback = Sync.Feedback
+	flow.CurrentColumnID = Sync.CurrentColumnID
+	flow.TargetColumnID = Sync.TargetColumnID
 	return
 }
 
