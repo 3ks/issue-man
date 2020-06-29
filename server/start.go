@@ -28,9 +28,12 @@ func Start(conf config.Config) {
 	router := gin.Default()
 
 	v1 := router.Group("/api/v1")
-	v1.GET("/sync", check, Sync)
-	v1.GET("/load", check, Load)
-	v1.POST("/webhooks/", Handler)
+	{
+		v1.GET("/sync", check, Sync)
+		v1.GET("/load", check, Load)
+		v1.POST("/webhooks/", Webhooks)
+	}
+
 	// TODO 获取 project card 列表
 	srv := &http.Server{
 		Addr:    global.Conf.Repository.Spec.Port,
@@ -61,7 +64,7 @@ func check(c *gin.Context) {
 
 // 手动调用更新函数
 func Sync(c *gin.Context) {
-	operation.syncIssues()
+	operation.SyncIssues()
 	c.JSON(http.StatusOK, gin.H{"status": "done"})
 }
 
@@ -76,7 +79,7 @@ func Load(c *gin.Context) {
 // 解析 webhook 数据：https://github.com/go-playground/webhooks
 // 拼装数据：根据 GitHub API 要求，以及自身需要拼装数据
 // 发送请求：https://github.com/google/go-github
-func Handler(c *gin.Context) {
+func Webhooks(c *gin.Context) {
 	hook, _ := github.New()
 	// 解析的事件列表
 	p, err := hook.Parse(c.Request, []github.Event{
@@ -105,6 +108,8 @@ func Handler(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
+// issueComment
+// webhook payload 数据是 issue comment 事件
 func issueComment(payload github.IssueCommentPayload) {
 	// 只处理 workspace 组织的 comment 事件
 	if payload.Repository.Owner.Login != tools.Get.WorkspaceOwner() {
@@ -126,6 +131,8 @@ func issueComment(payload github.IssueCommentPayload) {
 	operation.IssueHanding(payload, is)
 }
 
+// org
+// webhook payload 数据是 org 事件
 // 维护 workspace 组织成员变化情况
 func org(payload github.OrganizationPayload) {
 	// 只处理 workspace 组织的 organization 的事件
@@ -138,6 +145,8 @@ func org(payload github.OrganizationPayload) {
 	}
 }
 
+// team
+// webhook payload 数据是 team 事件
 // 维护 workspace 组织 maintainer team 成员的变化情况
 func team(payload github.MembershipPayload) {
 	// 只处理 workspace 组织的事件
@@ -151,14 +160,15 @@ func team(payload github.MembershipPayload) {
 	}
 }
 
-// 有 pull request 事件
+// pr
+// webhook payload 数据是 pull request 事件
 // 条件是 source 的仓库中有 pull request 被 close 且 merge 为 true，则触发检测方法，
 // 检测是否有 issue 需要更新
 func pr(payload github.PullRequestPayload) {
-	// 只处理 source 仓库的 merge pr 事件
+	// 只处理 source 仓库的 merged pr 事件
 	if payload.Repository.FullName == global.Conf.Repository.Spec.Source.GetFullName() {
 		if payload.Action == "closed" && payload.PullRequest.Merged {
-			operation.syncIssues()
+			operation.SyncIssues()
 		}
 	}
 }

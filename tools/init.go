@@ -12,6 +12,8 @@ var (
 	Parse    parseFunctions
 	Generate generateFunctions
 	Issue    issueFunctions
+	PR       pullRequestFunctions
+	Tree     treeFunctions
 )
 
 type (
@@ -33,5 +35,13 @@ type (
 	generateFunctions byte
 
 	// 封装了 github issue 操作相关的方法
+	// 所有对 github issue 的操作都通过这里的方法执行
 	issueFunctions byte
+
+	// 封装了 github pull request 操作相关的方法
+	pullRequestFunctions byte
+
+	// 封装了 git tree 相关的方法
+	// 主要是初始化时获取 tree，得到所有文件列表
+	treeFunctions byte
 )

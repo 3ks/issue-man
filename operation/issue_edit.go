@@ -1,12 +1,11 @@
 package operation
 
 import (
-	"context"
 	gg "github.com/google/go-github/v30/github"
-	"io/ioutil"
+	"issue-man/comm"
 	"issue-man/config"
 	"issue-man/global"
-	"net/http"
+	"issue-man/tools"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 // 具体修改内容完全取决于配置文件
 // 但是，一般来说，改动的内容只涉及 label，assignees，state
 // 而 title，body，milestone 不会改变
-func IssueEdit(info Info, flow config.IssueComment) {
+func issueEdit(info comm.Info, flow config.IssueComment) {
 	// 一般不会变化的内容
 	req := &gg.IssueRequest{
 		Title:     &info.Title,
@@ -42,32 +41,14 @@ func IssueEdit(info Info, flow config.IssueComment) {
 	updateAssign(req, info, flow)
 
 	// 尝试调用更新接口
-	_, resp, err := global.Client.Issues.Edit(context.TODO(), info.Owner, info.Repository, info.IssueNumber, req)
+	_, err := tools.Issue.EditByIssueRequest(info.IssueNumber, req)
 	if err != nil {
-		global.Sugar.Errorw("IssueEdit",
-			"req_id", info.ReqID,
-			"step", "call api",
-			"info", info,
-			"req", req,
-			"err", err.Error())
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("CheckCount",
-			"req_id", info.ReqID,
-			"step", "parse response",
-			"info", info,
-			"req", req,
-			"statusCode", resp.StatusCode,
-			"body", string(body))
 		return
 	}
 
 	// 创建文本提示
 	if flow.Spec.Action.SuccessFeedback != "" {
-		hc := Comment{}
+		hc := comm.Comment{}
 		hc.Login = info.Login
 		// 这可能是一个修改重置时间的指令，解析其重置时间
 		//if flow.JobName == "reset" {
@@ -80,12 +61,12 @@ func IssueEdit(info Info, flow config.IssueComment) {
 		//		hc.ResetDate = resetDate.In(time.Local).Format("2006-01-02")
 		//	}
 		//}
-		IssueComment(info, hc.HandComment(flow.Spec.Action.SuccessFeedback))
+		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Action.SuccessFeedback))
 	}
 }
 
 // 根据 flow 更新 info 中的 label
-func updateLabel(req *gg.IssueRequest, info Info, flow config.IssueComment) {
+func updateLabel(req *gg.IssueRequest, info comm.Info, flow config.IssueComment) {
 	// 需要移除的 label
 	remove := make(map[string]bool)
 	for _, v := range flow.Spec.Action.RemoveLabels {
@@ -114,7 +95,7 @@ func updateLabel(req *gg.IssueRequest, info Info, flow config.IssueComment) {
 
 // 根据 flow 更新 info 中的 assignees
 // 一般成员只能操作自己，maintainer 才能操作提及的人员。
-func updateAssign(req *gg.IssueRequest, info Info, flow config.IssueComment) {
+func updateAssign(req *gg.IssueRequest, info comm.Info, flow config.IssueComment) {
 	// 将当前 assign 列表转为 map，方便操作
 	assign := make(map[string]bool)
 	for _, v := range info.Assignees {

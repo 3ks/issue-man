@@ -1,24 +1,15 @@
 package operation
 
 import (
-	"bytes"
-	"context"
-	"crypto/md5"
-	"fmt"
-	"github.com/google/go-github/v30/github"
-	"io/ioutil"
-	"issue-man/config"
+	"issue-man/comm"
 	"issue-man/global"
-	"issue-man/server"
 	"issue-man/tools"
-	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	// syncIssues() 可以通过多种方式触发
+	// SyncIssues() 可以通过多种方式触发
 	// 这里加一个锁，以避免重复检测提示的情况
 	lock sync.Mutex
 )
@@ -38,7 +29,7 @@ func Sync() {
 	global.Sugar.Info("loaded jobs", "list", global.Jobs)
 	// 解析检测时间
 	t, err := time.ParseInLocation("2006-01-02 15:04",
-		time.Now().Format("2006-01-02 ")+global.Conf.Repository.Spec.Workspace.DetectionAt,
+		time.Now().Format("2006-01-02 ")+global.Conf.Repository.Spec.Workspace.Detection.At,
 		time.Local)
 	if err != nil {
 		global.Sugar.Errorw("parse detection time",
@@ -61,7 +52,7 @@ func Sync() {
 
 	for {
 		// 同步检测是一个特殊的任务，会检测两次 commit 之间所有 commit 涉及的文件，并提示
-		syncIssues()
+		SyncIssues()
 
 		// 遍历检测任务
 		//for _, v := range global.Jobs {
@@ -77,37 +68,31 @@ func Sync() {
 	}
 }
 
-func syncIssues() {
-	// syncIssues 可以通过多种方式触发
+func SyncIssues() {
+	// SyncIssues 可以通过多种方式触发
 	// 这里加一个锁，以避免重复检测提示的情况
 	lock.Lock()
 	defer lock.Unlock()
-	commitIssue := getPrIssue()
-	if commitIssue == nil {
+
+	// 获取 pr issue
+	prIssue := tools.Issue.GetPRIssue()
+	if prIssue == nil {
 		return
 	}
-	// 获取 commit 列表
-	commits := getRangeCommits(getShaFromCommitIssue(*commitIssue.Body))
-	if len(commits) == 0 {
-		global.Sugar.Warnw("Get issues files",
-			"status", "abnormal",
-			"length", "0",
-		)
-		return
-	}
-	// 最近一次 commit
-	commitIssue.Body = genBodyBySha(commits[0])
-	// 更新 commit issue
-	defer updateCommitIssue(commitIssue)
 
 	// 获取 pr 列表
-	prs := getAssociatedPRs(commits)
+	prs, headSha := tools.PR.ListRangePRs(tools.Parse.PRNumberFromBody(prIssue.GetBody()))
+	// 更新 pr issue
+	defer tools.Issue.Edit(prIssue)
+	// 最近一次 pr
+	// 如果中途失败，需要再次生成 body，以保存进度
+	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(prs[len(prs)-1], headSha)
 
-	// 获取 pr 涉及的文件列表
-	files := getAssociatedFiles(prs)
+	// 获取每个 pr 涉及的文件列表
+	files := tools.PR.GetAssociatedFiles(prs)
 
 	// 获取现有 issue 列表
-	existIssues, err := server.getIssues()
+	existIssues, err := tools.Issue.GetAllMath()
 	if err != nil {
 		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
@@ -129,17 +114,17 @@ func syncIssues() {
 	}()
 	for _, file := range files {
 		wg.Add(1)
-		go func(file File) {
+		go func(file comm.File) {
 			defer wg.Done()
 			// 1. 判断是否需要处理
 			for _, include := range global.Conf.IssueCreate.Spec.Includes {
 				// 符合条件的文件
-				if global.Conf.IssueCreate.SupportFile(include, file.cf.GetFilename()) {
+				if global.Conf.IssueCreate.SupportFile(include, file.CommitFile.GetFilename()) {
 					lock <- 1
 					file.Sync(
 						include,
-						existIssues[*tools.Generate.Title(file.cf.GetFilename())],
-						existIssues[*tools.Generate.Title(file.cf.GetPreviousFilename())],
+						existIssues[*tools.Generate.Title(file.CommitFile.GetFilename())],
+						existIssues[*tools.Generate.Title(file.CommitFile.GetPreviousFilename())],
 					)
 					// 文件已处理
 					return
@@ -148,515 +133,4 @@ func syncIssues() {
 		}(file)
 	}
 	wg.Wait()
-}
-
-func getShaFromCommitIssue(body string) string {
-	tmp := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
-	if len(tmp) == 0 {
-		return ""
-	}
-	return tmp[0]
-}
-
-// 生成带链接的 commit issue
-func genBodyBySha(sha string) *string {
-	body := fmt.Sprintf("%s\n\nhttps://github.com/%s/%s/tree/%s",
-		sha,
-		global.Conf.Repository.Spec.Source.Owner,
-		global.Conf.Repository.Spec.Source.Repository,
-		sha,
-	)
-	return &body
-}
-
-type File struct {
-	PrNumber int `json:"pr_number"`
-	cf       *github.CommitFile
-}
-
-// 处理需同步文件
-func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
-	// 这里的操作指的是文件的操作
-	// 至于 issue 是否存在，调用何种方法，需要额外判断
-	const (
-		ADD    = "added"
-		MODIFY = "modified"
-		RENAME = "renamed"
-		REMOVE = "removed"
-	)
-	switch *f.cf.Status {
-	// 更新 issue，不存在则创建 issue
-	case ADD, MODIFY:
-		// 更新 issue
-		if existIssue != nil {
-			f.update(existIssue)
-		} else {
-			// 创建 issue
-			f.create(include)
-		}
-	// 重命名/移动文件
-	case RENAME:
-		f.rename(include, existIssue, preIssue)
-	// 移除文件
-	case REMOVE:
-		f.remove(existIssue)
-	default:
-		global.Sugar.Warnw("unknown status",
-			"file", f,
-			"status", *f.cf.Status)
-	}
-}
-
-// 更新 issue，并 comment 如果 issue 不存在，则创建
-func (f File) create(include config.Include) {
-	issue := server.newIssue(include, *f.cf.Filename)
-	_, resp, err := global.Client.Issues.Create(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		issue,
-	)
-	if err != nil {
-		global.Sugar.Errorw("sync create issues",
-			"step", "create",
-			"title", issue.Title,
-			"body", issue.Body,
-			"err", err.Error())
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("init issues",
-			"step", "create",
-			"title", issue.Title,
-			"body", issue.Body,
-			"status code", resp.StatusCode,
-			"resp body", string(body))
-		return
-	}
-}
-
-// 更新 issue，并 comment
-func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
-	// 更新
-	updatedIssue, err := f.edit(
-		server.updateIssue(false, f.cf.GetFilename(), *existIssue),
-		existIssue.GetNumber(),
-		"update",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// 仅 comment 特定状态（label）下的 issue
-	if f.commentVerify(existIssue) {
-		// comment
-		err = f.comment(existIssue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return updatedIssue, nil
-}
-
-func (f File) commentVerify(issue *github.Issue) bool {
-	if issue == nil || issue.Labels == nil {
-		return false
-	}
-
-	return false
-}
-
-// 取 issue 的 number 和 assignees 调用 api 进行 comment
-// comment 内容为相关文件改动的提示
-func (f File) comment(issue *github.Issue) error {
-	// comment
-	body := ""
-	bf := bytes.Buffer{}
-	bf.WriteString("maintainer: ")
-	for _, v := range issue.Assignees {
-		bf.WriteString(fmt.Sprintf("@%s ", v.GetLogin()))
-	}
-	// TODO 抽取配置
-	bf.WriteString(fmt.Sprintf("\nstatus: %s", f.cf.GetStatus()))
-	bf.WriteString(fmt.Sprintf("\npr: https://github.com/istio/istio.io/pull/%d", f.PrNumber))
-	bf.WriteString(fmt.Sprintf("\ndiff: https://github.com/istio/istio.io/pull/%d/files#diff-%s",
-		f.PrNumber, fmt.Sprintf("%x", md5.Sum([]byte(f.cf.GetFilename())))))
-	body = bf.String()
-
-	comment := &github.IssueComment{}
-	comment.Body = &body
-	_, resp, err := global.Client.Issues.CreateComment(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		issue.GetNumber(),
-		comment)
-
-	if err != nil {
-		global.Sugar.Errorw("sync issue comment",
-			"step", "call api",
-			"status", "fail",
-			"file", f,
-			"err", err.Error())
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("CheckCount",
-			"step", "parse response",
-			"status", "fail",
-			"statusCode", resp.StatusCode,
-			"body", string(body))
-		return err
-	}
-	return nil
-}
-
-// 删除 issue 中的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
-func (f File) remove(issue *github.Issue) {
-	if issue == nil {
-		global.Sugar.Warnw("remove exist file issue",
-			"status", "has no match issue",
-			"file", f)
-		return
-	}
-	updatedIssue, err := f.edit(
-		server.updateIssue(true, f.cf.GetPreviousFilename(), *issue),
-		issue.GetNumber(),
-		"remove",
-	)
-
-	if err != nil {
-		return
-	}
-
-	// comment
-	err = f.comment(updatedIssue)
-	if err != nil {
-		return
-	}
-}
-
-// 对于 renamed 文件，需要：
-// 1. 更新/创建 新的 issue
-// 2. 在旧的 issue 中移除对应的文件
-func (f File) rename(include config.Include, existIssue, preIssue *github.Issue) {
-	// 更新 issue
-	if existIssue != nil {
-		// preIssue 为空，则仅更新 existIssue
-		// 这种极端情况很难出现
-		if preIssue == nil {
-			f.update(existIssue)
-			global.Sugar.Warnw("renamed file issue",
-				"status", "has no match previous issue",
-				"file", f)
-			return
-		}
-		// existIssue 和 preIssue 是同一个 issue
-		if existIssue.GetNumber() == preIssue.GetNumber() {
-			// 由于是同一个 issue，可以一次性完成更新，移除
-			updatedIssue, err := f.edit(
-				server.updateIssueRequest(true, f.cf.GetPreviousFilename(), server.updateIssue(false, *f.cf.Filename, *existIssue)),
-				existIssue.GetNumber(),
-				"renamed",
-			)
-			if err != nil {
-				return
-			}
-			// comment
-			f.comment(updatedIssue)
-		} else {
-			// 由于 existIssue 和 preIssue 不是同一个 issue
-			// 需要分别完成更新、移除
-			f.update(existIssue)
-			f.remove(preIssue)
-		}
-	} else {
-		// existIssue == nil，
-		// 此时，创建 issue，并在 preIssue 中移除旧文件名
-		f.create(include)
-		// 尝试移除
-		if preIssue != nil {
-			f.remove(preIssue)
-		}
-	}
-}
-
-func (f File) edit(issue *github.IssueRequest, number int, option string) (*github.Issue, error) {
-	updatedIssue, resp, err := global.Client.Issues.Edit(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		number,
-		issue,
-	)
-	if err != nil {
-		global.Sugar.Errorw("init issues",
-			"step", "update",
-			"id", number,
-			"title", issue.Title,
-			"body", issue.Body,
-			"err", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("edit issues",
-			"step", option,
-			"id", number,
-			"title", issue.Title,
-			"body", issue.Body,
-			"status code", resp.StatusCode,
-			"resp body", string(body))
-		return nil, err
-	}
-	return updatedIssue, nil
-}
-
-func getAssociatedFiles(prs []int) []File {
-	files := make([]File, 0)
-
-	for _, v := range prs {
-		for {
-			opt := &github.ListOptions{
-				Page:    1,
-				PerPage: 3000,
-			}
-			tmp, resp, err := global.Client.PullRequests.ListFiles(
-				context.TODO(),
-				global.Conf.Repository.Spec.Source.Owner,
-				global.Conf.Repository.Spec.Source.Repository,
-				v,
-				opt)
-			if err != nil {
-				global.Sugar.Errorw("load pr file list",
-					"call api", "failed",
-					"err", err.Error(),
-				)
-				return nil
-			}
-			if resp.StatusCode != http.StatusOK {
-				global.Sugar.Errorw("load pr file list",
-					"call api", "unexpect status code",
-					"status", resp.Status,
-					"status code", resp.StatusCode,
-					"response", resp.Body,
-				)
-				return nil
-			}
-			for _, cf := range tmp {
-				files = append(files, File{
-					PrNumber: v,
-					cf:       cf,
-				})
-			}
-			// 结束内层循环
-			if len(tmp) < opt.PerPage {
-				break
-			}
-			opt.Page++
-		}
-	}
-	return files
-}
-
-func getAssociatedPRs(commits []string) []int {
-	prs := make([]int, 0)
-	prMap := make(map[int]bool)
-	for _, sha := range commits {
-		ps, resp, err := global.Client.PullRequests.ListPullRequestsWithCommit(
-			context.TODO(),
-			global.Conf.Repository.Spec.Source.Owner,
-			global.Conf.Repository.Spec.Source.Repository,
-			sha,
-			nil,
-		)
-		if err != nil {
-			global.Sugar.Errorw("load pr list",
-				"call api", "failed",
-				"err", err.Error(),
-			)
-			return nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			global.Sugar.Errorw("load pr list",
-				"call api", "unexpect status code",
-				"status", resp.Status,
-				"status code", resp.StatusCode,
-				"response", resp.Body,
-			)
-			return nil
-		}
-		for _, v := range ps {
-			// 同一个 pr 不重复记录
-			if prMap[*v.Number] {
-				continue
-			}
-			prs = append(prs, *v.Number)
-			prMap[*v.Number] = true
-		}
-	}
-	return prs
-}
-
-// 获取范围内所有 commit
-func getRangeCommits(preSHA string) []string {
-	// 只将第一行内容视为 SHA
-	preSHA = strings.Split(strings.ReplaceAll(preSHA, "\r\n", "\n"), "\n")[0]
-	commits := make([]github.RepositoryCommit, 0)
-	page := 1
-	opt := &github.CommitsListOptions{
-		ListOptions: github.ListOptions{
-			Page:    page,
-			PerPage: 100,
-		},
-	}
-
-	for {
-		tmp, resp, err := global.Client.Repositories.ListCommits(context.TODO(),
-			global.Conf.Repository.Spec.Source.Owner,
-			global.Conf.Repository.Spec.Source.Repository,
-			opt)
-		if err != nil {
-			global.Sugar.Errorw("load commit list",
-				"call api", "failed",
-				"err", err.Error(),
-			)
-			return nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			global.Sugar.Errorw("load commit list",
-				"call api", "unexpect status code",
-				"status", resp.Status,
-				"status code", resp.StatusCode,
-				"response", resp.Body,
-			)
-			return nil
-		}
-		for _, v := range tmp {
-			commits = append(commits, *v)
-			// 已找到上次 commit
-			if v.Parents[0].GetSHA() == preSHA {
-				// 逆序 slice
-				tmp := make([]string, len(commits))
-				index := len(commits) - 1
-				for _, v := range commits {
-					tmp[index] = *v.SHA
-					index--
-				}
-				return tmp
-			}
-			if len(commits) > 1000 {
-				global.Sugar.Error("Get commit list",
-					"abnormal list length", len(commits))
-				return nil
-			}
-		}
-	}
-}
-
-// 获取最新的
-func getLatestCommit() string {
-	opt := &github.CommitsListOptions{
-		ListOptions: github.ListOptions{
-			Page:    1,
-			PerPage: 1,
-		},
-	}
-	commits, resp, err := global.Client.Repositories.ListCommits(
-		context.TODO(),
-		global.Conf.Repository.Spec.Source.Owner,
-		global.Conf.Repository.Spec.Source.Repository,
-		opt,
-	)
-	if err != nil {
-		global.Sugar.Errorw("load latest commit",
-			"call api", "failed",
-			"err", err.Error(),
-		)
-		return ""
-	}
-	if resp.StatusCode != http.StatusOK {
-		global.Sugar.Errorw("load latest commit",
-			"call api", "unexpect status code",
-			"status", resp.Status,
-			"status code", resp.StatusCode,
-			"response", resp.Body,
-		)
-		return ""
-	}
-	if len(commits) == 0 {
-		global.Sugar.Errorw("load latest commit",
-			"call api", "unexpect resp length",
-			"length", 0,
-			"response", resp.Body,
-		)
-		return ""
-	}
-	return commits[0].GetSHA()
-}
-
-func getPrIssue() *github.Issue {
-	is, resp, err := global.Client.Issues.Get(context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		global.Conf.Repository.Spec.Workspace.PRIssue,
-	)
-	if err != nil {
-		global.Sugar.Errorw("load commit issue",
-			"call api", "failed",
-			"err", err.Error(),
-		)
-		return nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		global.Sugar.Errorw("load commit issue",
-			"call api", "unexpect status code",
-			"status", resp.Status,
-			"status code", resp.StatusCode,
-			"response", resp.Body,
-		)
-		return nil
-	}
-
-	return is
-}
-
-func updateCommitIssue(issue *github.Issue) {
-	if issue.Body == nil {
-		global.Sugar.Errorw("update commit issue",
-			"confirm", "failed",
-			"cause", "body can not be nil",
-			"data", issue,
-		)
-		return
-	}
-	issueRequest := tools.Convert.Issue(issue)
-	issue, resp, err := global.Client.Issues.Edit(context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		*issue.Number,
-		issueRequest,
-	)
-	if err != nil {
-		global.Sugar.Errorw("update commit issue",
-			"call api", "failed",
-			"err", err.Error(),
-		)
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		global.Sugar.Errorw("update commit issue",
-			"call api", "unexpect status code",
-			"status", resp.Status,
-			"status code", resp.StatusCode,
-			"response", resp.Body,
-		)
-		return
-	}
-	global.Sugar.Info("update commit issue", "commit", issue.Body)
 }

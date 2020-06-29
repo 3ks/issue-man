@@ -2,6 +2,7 @@ package operation
 
 import (
 	"gopkg.in/go-playground/webhooks.v5/github"
+	"issue-man/comm"
 	"issue-man/global"
 	"issue-man/tools"
 )
@@ -33,7 +34,7 @@ func IssueHanding(payload github.IssueCommentPayload, instructs map[string][]str
 // 这取决于 issue 的实际情况和流程定义
 func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	// 基本信息
-	info := GetInfo(payload)
+	info := tools.Parse.Info(payload)
 	info.Mention = mention
 	flow := global.Instructions[instruct]
 
@@ -54,11 +55,11 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 		if flow.Spec.Rules.PermissionFeedback == "" {
 			return
 		}
-		hc := Comment{
+		hc := comm.Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(flow.Spec.Rules.PermissionFeedback))
+		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Rules.PermissionFeedback))
 		return
 	}
 
@@ -73,11 +74,11 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 		if flow.Spec.Rules.LabelFeedback == "" {
 			return
 		}
-		hc := Comment{
+		hc := comm.Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(flow.Spec.Rules.LabelFeedback))
+		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Rules.LabelFeedback))
 		return
 	}
 
@@ -91,16 +92,16 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 		if flow.Spec.Action.LabelLimitFeedback == "" {
 			return
 		}
-		hc := Comment{
+		hc := comm.Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
-		IssueComment(info, hc.HandComment(flow.Spec.Action.LabelLimitFeedback))
+		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Action.LabelLimitFeedback))
 		return
 	}
 
 	// 发送 Update Issue 请求（如果有的话）
-	IssueEdit(info, flow)
+	issueEdit(info, flow)
 
 	// 发送 Move Card 请求（如果有的话）
 	//CardMove(info, flow)

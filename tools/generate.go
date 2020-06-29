@@ -3,6 +3,8 @@ package tools
 import (
 	"bytes"
 	"fmt"
+	"github.com/google/go-github/v30/github"
+	"issue-man/config"
 	"issue-man/global"
 	"path"
 	"sort"
@@ -118,4 +120,73 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	}
 	t = bf.String()
 	return
+}
+
+// BodyByPRNumberAndSha
+// 根据 pr Number 和 sha 生成 issue body
+// BodyByPRNumberAndSha() 有一个对应的解析方法 PRNumberFromBody()
+func (g generateFunctions) BodyByPRNumberAndSha(number int, sha string) *string {
+	body := fmt.Sprintf("https://github.com/%s/%s/pull/%d\n\nhttps://github.com/%s/%s/tree/%s",
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		number,
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		sha,
+	)
+	return &body
+}
+
+// 根据配置初始化一个新 issue 的内容
+func (g generateFunctions) NewIssue(include config.Include, file string) (new *github.IssueRequest) {
+	new = &github.IssueRequest{}
+	new.Title = Generate.Title(file)
+	new.Body, _ = Generate.Body(false, file, "")
+
+	new.Labels = Convert.LabelAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
+	new.Assignees = Get.String(global.Conf.IssueCreate.Spec.Assignees)
+	new.Milestone = Get.Int(global.Conf.IssueCreate.Spec.Milestone)
+	return
+}
+
+// 更新已存在 issue
+func (g generateFunctions) UpdateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
+	length := 0
+	update = &github.IssueRequest{}
+	update.Title = exist.Title
+	update.Body, length = Generate.Body(remove, file, *exist.Body)
+
+	// 对于已存在的 issue
+	// label、assignees、milestone 不会变化
+	if exist.Milestone != nil {
+		update.Milestone = exist.Milestone.Number
+	}
+	if exist.Labels != nil {
+		update.Labels = Convert.Label(exist.Labels)
+	}
+	if exist.Assignees != nil {
+		update.Assignees = Convert.Assignees(exist.Assignees)
+	}
+
+	// 如果文件列表为 0，则添加需要检查的 Label
+	// 反之则移除
+	if length == 0 {
+		update.Labels = Convert.LabelAdd(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
+	} else {
+		update.Labels = Convert.LabelRemove(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
+	}
+	return
+}
+
+// 根据已存在的 issue 和配置，返回更新后的 issue
+// 仅更新 body
+func (g generateFunctions) UpdateNewIssue(file string, exist *github.IssueRequest) *github.IssueRequest {
+	exist.Body, _ = Generate.Body(false, file, exist.GetBody())
+	return exist
+}
+
+// 更新 issue request 的 body
+func (g generateFunctions) UpdateIssueRequest(remove bool, file string, exist *github.IssueRequest) *github.IssueRequest {
+	exist.Body, _ = Generate.Body(remove, file, exist.GetBody())
+	return exist
 }

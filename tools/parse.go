@@ -1,7 +1,13 @@
 package tools
 
 import (
+	"github.com/google/uuid"
+	"gopkg.in/go-playground/webhooks.v5/github"
+	"issue-man/comm"
+	"issue-man/global"
+	"path"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -28,7 +34,7 @@ func (p parseFunctions) Instruct(body string) (instructs map[string][]string) {
 	// 遍历行
 	for _, v := range s {
 		// 尝试解析指令
-		is, peoples := p.parse(v)
+		is, peoples := p.parseInstruct(v)
 		if is == "" {
 			continue
 		}
@@ -42,8 +48,8 @@ func (p parseFunctions) Instruct(body string) (instructs map[string][]string) {
 	return
 }
 
-// 解析指令
-func (p parseFunctions) parse(s string) (is string, peoples []string) {
+// 解析指令，不导出
+func (p parseFunctions) parseInstruct(s string) (is string, peoples []string) {
 	s += " "
 	strings.TrimLeft(s, " ")
 	//expName:=regexp.MustCompile("(?<=^/).*?(?= )")
@@ -60,6 +66,61 @@ func (p parseFunctions) parse(s string) (is string, peoples []string) {
 	}
 	for k, v := range peoples {
 		peoples[k] = strings.TrimSpace(v)
+	}
+	return
+}
+
+// PRNumberFromBody
+// 从 body 内解析出 pr number
+// PRNumberFromBody() 有一个对应的生成方法 BodyByPRNumberAndSha()
+func (p parseFunctions) PRNumberFromBody(body string) (number int) {
+	defer func() {
+		if p := recover(); p != nil {
+			global.Sugar.Panicw("bad body",
+				"body", body,
+				"panic", p)
+			number = 0
+		}
+	}()
+	firstLine := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")[0]
+	number, _ = strconv.Atoi(path.Base(firstLine))
+	return
+}
+
+// Info
+// 从 IssueCommentPayload 里的一些信息
+// 避免多次书写出现错误
+func (p parseFunctions) Info(payload github.IssueCommentPayload) (info comm.Info) {
+	defer func() {
+		if p := recover(); p != nil {
+			global.Sugar.Errorw("Info panic",
+				"req_id", info.ReqID,
+				"panic", p)
+		}
+	}()
+	info.ReqID = uuid.New().String()
+	ss := strings.SplitN(payload.Repository.FullName, "/", -1)
+	info.Owner = ss[0]
+	info.Repository = ss[1]
+
+	info.Login = payload.Sender.Login
+
+	info.IssueURL = payload.Issue.URL
+	info.IssueNumber = int(payload.Issue.Number)
+	info.Title = payload.Issue.Title
+	info.Body = payload.Issue.Body
+	info.Milestone = int(payload.Issue.Milestone.Number)
+	info.State = payload.Issue.State
+
+	info.Assignees = make([]string, len(payload.Issue.Assignees))
+	info.Labels = make([]string, len(payload.Issue.Labels))
+	for i := 0; i < len(payload.Issue.Assignees) || i < len(payload.Issue.Labels); i++ {
+		if i < len(info.Assignees) {
+			info.Assignees[i] = payload.Issue.Assignees[i].Login
+		}
+		if i < len(info.Labels) {
+			info.Labels[i] = payload.Issue.Labels[i].Name
+		}
 	}
 	return
 }

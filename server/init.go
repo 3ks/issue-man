@@ -3,16 +3,10 @@
 package server
 
 import (
-	"context"
-	"fmt"
 	"github.com/google/go-github/v30/github"
-	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
-	"issue-man/operation"
 	"issue-man/tools"
-	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -26,118 +20,13 @@ import (
 // 1. 包含 _index 开头的文件的目录，创建统一的 issue（但会继续遍历相关子目录），由 maintainer 统一管理。
 // 3. 以包含 .md 文件的目录为单位，创建 issue（即一个目录可能包含多个 .md 文件）
 func Init(conf config.Config) {
-	fs, err := getUpstreamFiles()
-	if err != nil {
-		global.Sugar.Errorw("Get upstream files",
-			"status", "fail",
-			"err", err.Error(),
-		)
-		return
-	}
-	// init 始终基于最新 commit 来完成，
-	// 所以这里直接更新 commit issue body
-	commitIssue := operation.getPrIssue()
-	commitIssue.Body = operation.genBodyBySha(operation.getLatestCommit())
-	defer operation.updateCommitIssue(commitIssue)
-	genAndCreateIssues(fs)
-}
-
-// 根据规则（路径）获取全部上游文件
-func getUpstreamFiles() (files map[string]string, err error) {
-	c := *global.Conf
-	global.Sugar.Debugw("load upstream files",
-		"step", "start")
-	ts, resp, err := global.Client.Git.GetTree(context.TODO(),
-		c.Repository.Spec.Source.Owner,
-		c.Repository.Spec.Source.Repository,
-		"master",
-		true,
-	)
-	if err != nil {
-		global.Sugar.Errorw("load upstream files",
-			"call api", "Get tree",
-			"err", err.Error(),
-		)
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		global.Sugar.Errorw("load upstream files list",
-			"call api", "unexpect status code",
-			"status", resp.Status,
-			"status code", resp.StatusCode,
-			"response", resp.Body,
-		)
-		return nil, fmt.Errorf("%v\n", resp.Body)
-	}
-	files = make(map[string]string)
-	for _, v := range ts.Entries {
-		// 仅处理支持的文件类型
-		if v.GetType() == "blob" && c.IssueCreate.SupportType(v.GetPath()) {
-			files[v.GetPath()] = v.GetPath()
-			continue
-		}
-	}
-	//global.Sugar.Debugw("Get files",
-	//	"data", files)
-	return files, nil
-}
-
-// 根据规则（label）获取全部 issue，
-// key 为 title
-// title 由 parseTitleFromPath 生成
-func getIssues() (issues map[string]*github.Issue, err error) {
-	c := *global.Conf
-	global.Sugar.Debugw("load workspace issues",
-		"step", "start")
-	opt := &github.IssueListByRepoOptions{}
-	// 仅根据 kind 类型的 label 筛选 issue
-	for _, v := range c.IssueCreate.Spec.Labels {
-		if strings.HasPrefix(v, "kind/") {
-			opt.Labels = append(opt.Labels, v)
-		}
-	}
-	// 每页 100 个 issue
-	opt.Page = 1
-	opt.PerPage = 100
-
-	issues = make(map[string]*github.Issue)
-	for {
-		is, resp, err := global.Client.Issues.ListByRepo(
-			context.TODO(),
-			c.Repository.Spec.Workspace.Owner,
-			c.Repository.Spec.Workspace.Repository,
-			opt,
-		)
-		if err != nil {
-			global.Sugar.Errorw("load issue list",
-				"call api", "failed",
-				"err", err.Error(),
-			)
-			return nil, err
-		}
-		if resp.StatusCode != http.StatusOK {
-			global.Sugar.Errorw("load issue list",
-				"call api", "unexpect status code",
-				"status", resp.Status,
-				"status code", resp.StatusCode,
-				"response", resp.Body,
-			)
-			return nil, err
-		}
-
-		for _, v := range is {
-			issues[v.GetTitle()] = v
-		}
-
-		if len(is) < opt.PerPage {
-			break
-		}
-		opt.Page++
-	}
-	global.Sugar.Debugw("Get issues",
-		"data", issues)
-
-	return issues, nil
+	// init 始终基于最新 pr 来完成，
+	// 所以这里直接更新 pr issue body
+	prIssue := tools.Issue.GetPRIssue()
+	latestPR := tools.PR.LatestMerged()
+	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
+	defer tools.Issue.Edit(prIssue)
+	genAndCreateIssues()
 }
 
 // 根据配置、文件列表、已存在 issue，判断生成最终操作列表
@@ -148,9 +37,20 @@ func getIssues() (issues map[string]*github.Issue, err error) {
 // 2. 遍历，根据 title 判断 issue 是否已经存在
 // 3. 更新 issue（如果文件有变化），assignees 如果不为空，则不修改，如果为空则判断配置是否有配置 assignees，如都为空则不操作。
 // 4. 创建 issue
-func genAndCreateIssues(fs map[string]string) {
+func genAndCreateIssues() {
+	// 获取全部需要处理的文件
+	fs, err := tools.Tree.GetAllMatchFile()
+	if err != nil {
+		global.Sugar.Errorw("Get upstream files",
+			"status", "fail",
+			"err", err.Error(),
+		)
+		return
+	}
+
 	conf := *global.Conf
-	existIssues, err := getIssues()
+	// 获取全部符合条件的 issue，避免重复创建
+	existIssues, err := tools.Issue.GetAllMath()
 	if err != nil {
 		global.Sugar.Errorw("Get issues files",
 			"status", "fail",
@@ -161,6 +61,8 @@ func genAndCreateIssues(fs map[string]string) {
 	// 更新和创建的 issue
 	updates, creates := make(map[int]*github.IssueRequest), make(map[string]*github.IssueRequest)
 	updateFail, createFail := 0, 0
+
+	// 根据配置和已有 issue 判断是创建或更新
 	for file := range fs {
 		for _, v := range conf.IssueCreate.Spec.Includes {
 			// 符合条件的文件
@@ -168,16 +70,16 @@ func genAndCreateIssues(fs map[string]string) {
 				// 根据 title 判断，如果已存在相关 issue，则更新
 				exist := existIssues[*tools.Generate.Title(file)]
 				if exist != nil {
-					updates[*exist.Number] = updateIssue(false, file, *exist)
+					updates[*exist.Number] = tools.Generate.UpdateIssue(false, file, *exist)
 				} else {
 					// 不存在，则新建，新建也分两种情况
 					// 有多个新文件属于一个 issue
 					create := creates[*tools.Generate.Title(file)]
 					if create != nil {
-						creates[*tools.Generate.Title(file)] = updateNewIssue(file, create)
+						creates[*tools.Generate.Title(file)] = tools.Generate.UpdateNewIssue(file, create)
 					} else {
 						// 是一个新的新 issue
-						creates[*tools.Generate.Title(file)] = newIssue(v, file)
+						creates[*tools.Generate.Title(file)] = tools.Generate.NewIssue(v, file)
 					}
 				}
 				// 文件已处理，break 内层循环
@@ -185,89 +87,41 @@ func genAndCreateIssues(fs map[string]string) {
 			}
 		}
 	}
-
-	//global.Sugar.Debugw("create issues",
-	//	"data", creates)
-	//global.Sugar.Debugw("update issues",
-	//	"data", updates)
+	global.Sugar.Debugw("create issues", "data", creates)
+	global.Sugar.Debugw("update issues", "data", updates)
 
 	wg := sync.WaitGroup{}
 	lock := make(chan int, 5)
 	go func() {
-		// 将 API 频率限制为每秒 5 次
+		// 由于 GitHub 的额外限制
+		// 将 API 频率限制为每秒 2 次
 		for range lock {
 			time.Sleep(time.Millisecond * 500)
 		}
 	}()
-	// update
+	// update 的 issue
 	for k, v := range updates {
 		wg.Add(1)
 		go func(number int, issue *github.IssueRequest) {
 			defer wg.Done()
 			lock <- 1
-			_, resp, err := global.Client.Issues.Edit(
-				context.TODO(),
-				global.Conf.Repository.Spec.Workspace.Owner,
-				global.Conf.Repository.Spec.Workspace.Repository,
-				number,
-				issue,
-			)
+			_, err := tools.Issue.EditByIssueRequest(number, issue)
 			if err != nil {
-				global.Sugar.Errorw("init issues",
-					"step", "update",
-					"id", number,
-					"title", issue.Title,
-					"body", issue.Body,
-					"err", err.Error())
-				updateFail++
-				return
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				body, _ := ioutil.ReadAll(resp.Body)
-				global.Sugar.Errorw("init issues",
-					"step", "update",
-					"id", number,
-					"title", issue.Title,
-					"body", issue.Body,
-					"status code", resp.StatusCode,
-					"resp body", string(body))
 				updateFail++
 				return
 			}
 		}(k, v)
 	}
+	wg.Wait()
 
-	// create
+	// create 的 issue
 	for _, v := range creates {
 		wg.Add(1)
 		go func(issue *github.IssueRequest) {
 			defer wg.Done()
 			lock <- 1
-			_, resp, err := global.Client.Issues.Create(
-				context.TODO(),
-				global.Conf.Repository.Spec.Workspace.Owner,
-				global.Conf.Repository.Spec.Workspace.Repository,
-				issue,
-			)
+			_, err := tools.Issue.Create(issue)
 			if err != nil {
-				global.Sugar.Errorw("init issues",
-					"step", "create",
-					"title", issue.Title,
-					"body", issue.Body,
-					"err", err.Error())
-				createFail++
-				return
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusCreated {
-				body, _ := ioutil.ReadAll(resp.Body)
-				global.Sugar.Errorw("init issues",
-					"step", "create",
-					"title", issue.Title,
-					"body", issue.Body,
-					"status code", resp.StatusCode,
-					"resp body", string(body))
 				createFail++
 				return
 			}
@@ -282,57 +136,4 @@ func genAndCreateIssues(fs map[string]string) {
 		"update", len(updates),
 		"update fail", updateFail,
 	)
-}
-
-// 根据已存在的 issue 和配置，返回更新后的 issue
-// 仅更新 body
-func updateNewIssue(file string, exist *github.IssueRequest) *github.IssueRequest {
-	exist.Body, _ = tools.Generate.Body(false, file, exist.GetBody())
-	return exist
-}
-
-// 更新 issue request 的 body
-func updateIssueRequest(remove bool, file string, exist *github.IssueRequest) *github.IssueRequest {
-	exist.Body, _ = tools.Generate.Body(remove, file, exist.GetBody())
-	return exist
-}
-
-// 根据已存在的 issue 和配置，返回更新后的 IssueRequest
-func updateIssue(remove bool, file string, exist github.Issue) (update *github.IssueRequest) {
-	length := 0
-	update = &github.IssueRequest{}
-	update.Title = exist.Title
-	update.Body, length = tools.Generate.Body(remove, file, *exist.Body)
-
-	// 对于已存在的 issue
-	// label、assignees、milestone 不会变化
-	if exist.Milestone != nil {
-		update.Milestone = exist.Milestone.Number
-	}
-	if exist.Labels != nil {
-		update.Labels = tools.Convert.Label(exist.Labels)
-	}
-	if exist.Assignees != nil {
-		update.Assignees = tools.Convert.Assignees(exist.Assignees)
-	}
-
-	// 如果文件列表为 0，则添加需要检查的 Label
-	// 反之则移除
-	if length == 0 {
-		update.Labels = tools.Convert.LabelAdd(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
-	} else {
-		update.Labels = tools.Convert.LabelRemove(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
-	}
-	return
-}
-
-func newIssue(include config.Include, file string) (new *github.IssueRequest) {
-	new = &github.IssueRequest{}
-	new.Title = tools.Generate.Title(file)
-	new.Body, _ = tools.Generate.Body(false, file, "")
-
-	new.Labels = tools.Convert.LabelAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
-	new.Assignees = tools.Get.String(global.Conf.IssueCreate.Spec.Assignees)
-	new.Milestone = tools.Get.Int(global.Conf.IssueCreate.Spec.Milestone)
-	return
 }

@@ -109,3 +109,14 @@ func (c convertFunctions) StringToMap(source []string) map[string]bool {
 	}
 	return data
 }
+
+// Reverse
+// 将 slice 逆序
+func (c convertFunctions) Reverse(source []int) []int {
+	for i, j := 0, len(source)-1; i < j; {
+		source[i], source[j] = source[j], source[i]
+		i++
+		j++
+	}
+	return source
+}

@@ -28,7 +28,7 @@ func Job(fullName string, Sync config.Job) {
 	}
 
 	// 获取满足条件的 issue
-	issues, err := getIssues(ss[0], ss[1], Sync.Labels)
+	issues, err := GetAllIssue(ss[0], ss[1], Sync.Labels)
 	if err != nil {
 		fmt.Printf("get issues list with label failed. label: %v, err: %v\n", Sync.Labels, err.Error())
 		return
@@ -87,7 +87,7 @@ func Job(fullName string, Sync config.Job) {
 			// 清楚 comment，下面手动调用 comment
 			flow.SuccessFeedback = ""
 			// 添加标签，后续根据标签和延长指令来计算重置时间
-			IssueEdit(info, flow)
+			issueEdit(info, flow)
 			fmt.Printf("warn comment issue number: %v, body: %v\n", info.IssueNumber, hc.HandComment(Sync.Feedback))
 			// comment 提示
 			IssueComment(info, hc.HandComment(Sync.Feedback))
@@ -115,7 +115,7 @@ func Job(fullName string, Sync config.Job) {
 				fmt.Printf("assembly data. info: %#v, flow: %#v\n", info, flow)
 
 				// 发送 Update Issue 请求（如果有的话）
-				IssueEdit(info, flow)
+				issueEdit(info, flow)
 
 				// 发送 Move Card 请求（如果有的话）
 				CardMove(info, flow)
@@ -369,7 +369,7 @@ func getLabelCreateAt(owner, repository string, issueNumber int, labels []string
 
 // 获取 issue 列表
 // 获取全部（10000 条以内）满足条件的 issue
-func getIssues(owner, repository string, labels []string) (issues []*gg.Issue, err error) {
+func GetAllIssue(owner, repository string, labels []string) (issues []*gg.Issue, err error) {
 	issues = make([]*gg.Issue, 0)
 
 	// 根据 label 筛选
