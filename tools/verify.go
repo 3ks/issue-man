@@ -44,6 +44,7 @@ const (
 // 反之则表示未通过检测。
 // 检查流程是，先检测配置文件是否配置了改项，如果配置了，用户是否满足该项的条件。
 // 满足任一一个条件，则视为有权限。
+// permission 可填的值目前有：anyone、assignees、maintainers、member
 func (v verifyFunctions) Permission(permission []string, login string, assignees []string) bool {
 	// 未配置任何权限，则不允许操作
 	if len(permission) == 0 {

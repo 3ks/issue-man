@@ -87,21 +87,21 @@ spec:
     permision:
     - "@maintainer"
     - "@member"
-    permissionFeedback: "sorry"
+    permissionFeedback: "@commenter, you need to join the organization first."
     labels:
     - "status/pending"
-    labelFeedback: "sorry"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
   action:
     addLabels:
-    - "status/waiting-for-update"
+    - "status/need-sync"
     addLabelsLimit: 10
-    labelLimitFeedback: "sorry"
+    labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
     removeLabels:
     - "status/pending"
     addAssignees:
     - "@commenter"
-    successFeedback: "thank you"
-    failFeedback: "sorry"
+    successFeedback: "Thanks @commenter, this issue has been assigned to you!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -113,10 +113,10 @@ spec:
     permision:
     - "@maintainer"
     - "@assigner"
-    permissionFeedback: "sorry"
+    permissionFeedback: "@commenter, You can't execute this instruction on this issue."
     labels:
     - "status/need-sync"
-    labelFeedback: "sorry"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
   action:
     addLabels:
     - "status/waiting-for-update"
@@ -124,8 +124,8 @@ spec:
     removeLabels:
     - "status/need-sync"
     - "status/stale"
-    successFeedback: "thank you"
-    failFeedback: "sorry"
+    successFeedback: "Nice job @commenter, you will be notified when something needs to be updated, other than that, you don’t need to check it manually."
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -138,8 +138,8 @@ spec:
     - "@maintainer"
     - "@assigner"
     labels:
-    - "status/need-sync"
-    labelFeedback: "sorry"
+    - "kind/page"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
   action:
     addLabels:
     - "status/pending"
@@ -148,9 +148,33 @@ spec:
     - "status/waiting-for-update"
     - "status/stale"
     removeAssigners:
-    - "@all"
-    successFeedback: "thank you"
-    failFeedback: "sorry"
+    # TODO 关键字？
+    - "@self-or-all"
+    successFeedback: "Thank you @assigners, I'll see you again!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-grad"
+spec:
+  rules:
+    instruct: "grad"
+    permision:
+    - "@maintainer"
+    labels:
+    - "status/need-confirm"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    state: "closed"
+    addLabels:
+    - "status/graduate"
+    removeLabels:
+    - "status/need-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    successFeedback: "Thank you @assigners, This is a great moment!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
 kind: "IssueComment"
@@ -177,7 +201,8 @@ spec:
     - "@assigner" # 对于非 maintainer，仅能 unassign 评论者自己。
   action:
     removeAssigner:
-    - "@mention"
+      # TODO 关键字？
+    - "@self-or-all"
 ---
 apiVersion: "v1"
 kind: "Job"

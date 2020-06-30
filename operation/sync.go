@@ -19,6 +19,7 @@ var (
 // 思路：对于需要检测的状态（label），会将其添加至相应的切片
 //      每天定时检测，满足相关条件时，则执行一些操作
 //
+// Sync 用于定时自动调用同步检测函数
 // TODO 检测频率
 // 1. 获取所有特定 label 的 issue
 // 2. 获取存储 commit 的 issue
@@ -51,7 +52,7 @@ func Sync() {
 	time.Sleep(s)
 
 	for {
-		// 同步检测是一个特殊的任务，会检测两次 commit 之间所有 commit 涉及的文件，并提示
+		// 同步检测是一个特殊的任务，会检测两次 pr 之间所有 merged pr 涉及的文件，并提示
 		SyncIssues()
 
 		// 遍历检测任务
@@ -68,6 +69,7 @@ func Sync() {
 	}
 }
 
+// SyncIssues 同步检测 issue
 func SyncIssues() {
 	// SyncIssues 可以通过多种方式触发
 	// 这里加一个锁，以避免重复检测提示的情况

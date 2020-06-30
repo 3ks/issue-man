@@ -21,10 +21,10 @@ const (
 // 而 title，body，milestone 不会改变
 func issueEdit(info comm.Info, flow config.IssueComment) {
 	// 一般不会变化的内容
-	req := &gg.IssueRequest{
+	edit := &gg.IssueRequest{
 		Title:     &info.Title,
 		Body:      &info.Body,
-		Milestone: &info.Milestone,
+		Milestone: &info.Milestone, //TODO 0？
 	}
 
 	closeIssue := IssueOpen
@@ -32,16 +32,16 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 	if flow.Spec.Action.State == IssueClosed {
 		closeIssue = IssueClosed
 	}
-	req.State = &closeIssue
+	edit.State = &closeIssue
 
 	// 更新 label（如果有的话）
-	updateLabel(req, info, flow)
+	updateLabel(edit, info, flow)
 
 	// 更新 assignees（如果有的话）
-	updateAssign(req, info, flow)
+	updateAssign(edit, info, flow)
 
 	// 尝试调用更新接口
-	_, err := tools.Issue.EditByIssueRequest(info.IssueNumber, req)
+	_, err := tools.Issue.EditByIssueRequest(info.IssueNumber, edit)
 	if err != nil {
 		return
 	}
@@ -49,7 +49,9 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 	// 创建文本提示
 	if flow.Spec.Action.SuccessFeedback != "" {
 		hc := comm.Comment{}
+		hc.ReqID = info.ReqID
 		hc.Login = info.Login
+		hc.Assigners = info.Assignees
 		// 这可能是一个修改重置时间的指令，解析其重置时间
 		//if flow.JobName == "reset" {
 		//	if Sync, ok := global.Jobs[flow.JobName]; ok {
@@ -73,9 +75,8 @@ func updateLabel(req *gg.IssueRequest, info comm.Info, flow config.IssueComment)
 		remove[v] = true
 	}
 
-	// 添加下一阶段的 label
+	// 需要添加的 label
 	labels := make([]string, 0)
-	// target label 总是会直接添加
 	for _, v := range flow.Spec.Action.AddLabels {
 		labels = append(labels, v)
 	}

@@ -7,7 +7,7 @@ import (
 	"issue-man/tools"
 )
 
-// is 是一个指令 map，其中：
+// instructs 是一个指令 map，其中：
 // key 为指令名
 // value 为提及人员，可能为空
 func IssueHanding(payload github.IssueCommentPayload, instructs map[string][]string) {
@@ -27,7 +27,7 @@ func IssueHanding(payload github.IssueCommentPayload, instructs map[string][]str
 // 状态检查
 // 数量检查
 // 拼装数据
-// 发送 Update Issue 请求
+// 发送 Edit Issue 请求
 // 发送 Move Card 请求（如果有的话）
 //-----------------------------------------
 // 在检查过程中，随时可能会 comment，并 return
@@ -93,8 +93,9 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			return
 		}
 		hc := comm.Comment{
-			Login: info.Login,
-			ReqID: info.ReqID,
+			Login:      info.Login,
+			ReqID:      info.ReqID,
+			LimitCount: flow.Spec.Action.AddLabelsLimit,
 		}
 		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Action.LabelLimitFeedback))
 		return

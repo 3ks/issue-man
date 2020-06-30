@@ -99,9 +99,8 @@ func (p parseFunctions) Info(payload github.IssueCommentPayload) (info comm.Info
 		}
 	}()
 	info.ReqID = uuid.New().String()
-	ss := strings.SplitN(payload.Repository.FullName, "/", -1)
-	info.Owner = ss[0]
-	info.Repository = ss[1]
+	info.Owner = payload.Repository.Owner.Login
+	info.Repository = payload.Repository.Name
 
 	info.Login = payload.Sender.Login
 
