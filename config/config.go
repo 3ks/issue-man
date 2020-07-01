@@ -132,7 +132,7 @@ type Rule struct {
 	PermissionFeedback string   `yaml:"permissionFeedback"`
 	Labels             []string `yaml:"labels"`
 	LabelFeedback      string   `yaml:"labelFeedback"`
-	Assigners          []string `yaml:"assigners"`
+	Assignees          []string `yaml:"assignees"`
 	AssignerFeedback   string   `yaml:"assignerFeedback"`
 }
 
@@ -142,8 +142,8 @@ type Action struct {
 	AddLabelsLimit     int      `yaml:"addLabelsLimit"`
 	LabelLimitFeedback string   `yaml:"labelLimitFeedback"`
 	RemoveLabels       []string `yaml:"removeLabels"`
-	AddAssigners       []string `yaml:"addAssigners"`
-	RemoveAssigners    []string `yaml:"removeAssigners"`
+	AddAssignees       []string `yaml:"addAssignees"`
+	RemoveAssignees    []string `yaml:"removeAssignees"`
 	State              string   `yaml:"state"`
 	SuccessFeedback    string   `yaml:"successFeedback"`
 	FailFeedback       string   `yaml:"failFeedback"`

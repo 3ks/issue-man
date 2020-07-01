@@ -1,9 +1,6 @@
 package tools
 
 import (
-	"github.com/google/uuid"
-	"gopkg.in/go-playground/webhooks.v5/github"
-	"issue-man/comm"
 	"issue-man/global"
 	"path"
 	"regexp"
@@ -84,42 +81,6 @@ func (p parseFunctions) PRNumberFromBody(body string) (number int) {
 	}()
 	firstLine := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")[0]
 	number, _ = strconv.Atoi(path.Base(firstLine))
-	return
-}
-
-// Info
-// 从 IssueCommentPayload 里的一些信息
-// 避免多次书写出现错误
-func (p parseFunctions) Info(payload github.IssueCommentPayload) (info comm.Info) {
-	defer func() {
-		if p := recover(); p != nil {
-			global.Sugar.Errorw("Info panic",
-				"req_id", info.ReqID,
-				"panic", p)
-		}
-	}()
-	info.ReqID = uuid.New().String()
-	info.Owner = payload.Repository.Owner.Login
-	info.Repository = payload.Repository.Name
-
-	info.Login = payload.Sender.Login
-
-	info.IssueURL = payload.Issue.URL
-	info.IssueNumber = int(payload.Issue.Number)
-	info.Title = payload.Issue.Title
-	info.Body = payload.Issue.Body
-	info.Milestone = int(payload.Issue.Milestone.Number)
-	info.State = payload.Issue.State
-
-	info.Assignees = make([]string, len(payload.Issue.Assignees))
-	info.Labels = make([]string, len(payload.Issue.Labels))
-	for i := 0; i < len(payload.Issue.Assignees) || i < len(payload.Issue.Labels); i++ {
-		if i < len(info.Assignees) {
-			info.Assignees[i] = payload.Issue.Assignees[i].Login
-		}
-		if i < len(info.Labels) {
-			info.Labels[i] = payload.Issue.Labels[i].Name
-		}
-	}
+	global.Sugar.Infow("parse pr number", "number", number)
 	return
 }

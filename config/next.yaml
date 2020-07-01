@@ -84,7 +84,7 @@ metadata:
 spec:
   rules:
     instruct: "accept"
-    permision:
+    permissions:
     - "@maintainer"
     - "@member"
     permissionFeedback: "@commenter, you need to join the organization first."
@@ -110,7 +110,7 @@ metadata:
 spec:
   rules:
     instruct: "synced"
-    permision:
+    permissions:
     - "@maintainer"
     - "@assigner"
     permissionFeedback: "@commenter, You can't execute this instruction on this issue."
@@ -120,7 +120,6 @@ spec:
   action:
     addLabels:
     - "status/waiting-for-update"
-    labelLimitFeedback: "sorry"
     removeLabels:
     - "status/need-sync"
     - "status/stale"
@@ -134,7 +133,7 @@ metadata:
 spec:
   rules:
     instruct: "wavier"
-    permision:
+    permissions:
     - "@maintainer"
     - "@assigner"
     labels:
@@ -147,10 +146,9 @@ spec:
     - "status/need-sync"
     - "status/waiting-for-update"
     - "status/stale"
-    removeAssigners:
-    # TODO 关键字？
-    - "@self-or-all"
-    successFeedback: "Thank you @assigners, I'll see you again!"
+    removeAssignees:
+    - "@all-assignees"
+    successFeedback: "Thank you @assignees, I'll see you again!"
     failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
@@ -160,7 +158,7 @@ metadata:
 spec:
   rules:
     instruct: "grad"
-    permision:
+    permissions:
     - "@maintainer"
     labels:
     - "status/need-confirm"
@@ -173,7 +171,7 @@ spec:
     - "status/need-sync"
     - "status/waiting-for-update"
     - "status/stale"
-    successFeedback: "Thank you @assigners, This is a great moment!"
+    successFeedback: "Thank you @assignees, This is a great moment!"
     failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
@@ -183,8 +181,9 @@ metadata:
 spec:
   rules:
     instruct: "assign"
-    permision:
+    permissions:
     - "@maintainer"
+    - "@assigner"
   action:
     addAssigneer:
     - "@mention"
@@ -196,13 +195,11 @@ metadata:
 spec:
   rules:
     instruct: "unassign"
-    permision:
+    permissions:
     - "@maintainer"
-    - "@assigner" # 对于非 maintainer，仅能 unassign 评论者自己。
   action:
     removeAssigner:
-      # TODO 关键字？
-    - "@self-or-all"
+    - "@mention"
 ---
 apiVersion: "v1"
 kind: "Job"

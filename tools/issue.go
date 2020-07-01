@@ -60,8 +60,8 @@ func (i issueFunctions) GetAllMath() (issues map[string]*github.Issue, err error
 		}
 		opt.Page++
 	}
-	global.Sugar.Debugw("Get issues",
-		"data", issues)
+	global.Sugar.Debugw("get all match issues",
+		"len", len(issues))
 
 	return issues, nil
 }
@@ -151,7 +151,7 @@ func (i issueFunctions) EditByIssueRequest(number int, issue *github.IssueReques
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
 		global.Sugar.Errorw("edit issues",
 			"step", "check response code",

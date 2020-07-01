@@ -57,10 +57,10 @@ func (c convertFunctions) Assignees(sourceUser []*github.User) *[]string {
 	return &assignees
 }
 
-// LabelAdd
+// SliceAdd
 // 由于 GitHub 对于多个重名 Label 可能会重复创建，
 // 所以应该用该函数对 Label 进行去重添加
-func (c convertFunctions) LabelAdd(label *[]string, add ...string) *[]string {
+func (c convertFunctions) SliceAdd(label *[]string, add ...string) *[]string {
 	if label == nil {
 		newSlice := make([]string, 0)
 		label = &newSlice
@@ -73,9 +73,9 @@ func (c convertFunctions) LabelAdd(label *[]string, add ...string) *[]string {
 	return c.MapToString(labelMap)
 }
 
-// LabelRemove
+// SliceRemove
 // 用于移除指定的 label
-func (c convertFunctions) LabelRemove(label *[]string, remove ...string) *[]string {
+func (c convertFunctions) SliceRemove(label *[]string, remove ...string) *[]string {
 	if label == nil {
 		return nil
 	}
@@ -116,7 +116,7 @@ func (c convertFunctions) Reverse(source []int) []int {
 	for i, j := 0, len(source)-1; i < j; {
 		source[i], source[j] = source[j], source[i]
 		i++
-		j++
+		j--
 	}
 	return source
 }

@@ -32,10 +32,10 @@ func (v verifyFunctions) HasLabel(source []string, require ...string) bool {
 }
 
 const (
-	Anyone     = "anyone"
-	Assignees  = "assignees"
-	Maintainer = "maintainers"
-	Member     = "member"
+	Anyone     = "@anyone"
+	Assignees  = "@assignees"
+	Maintainer = "@maintainers"
+	Member     = "@member"
 )
 
 // 权限检查

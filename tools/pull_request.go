@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"github.com/google/go-github/v30/github"
-	"issue-man/comm"
 	"issue-man/global"
 	"net/http"
 	"sync"
@@ -45,7 +44,7 @@ func (i pullRequestFunctions) LatestMerged() (latestPR *github.PullRequest) {
 		}
 		for _, v := range prs {
 			// 最近的一个 merged pr
-			if v.GetMerged() {
+			if v.MergeCommitSHA != nil {
 				return v
 			}
 		}
@@ -65,7 +64,9 @@ func (i pullRequestFunctions) ListRangePRs(prNumber int) (prs []int, headSha str
 	}
 	prs = make([]int, 0)
 	// 逆序，先处理较早的 pr，最后处理最新的 pr
-	defer Convert.Reverse(prs)
+	defer func() {
+		Convert.Reverse(prs)
+	}()
 
 	opt := &github.PullRequestListOptions{
 		State: "closed",
@@ -100,18 +101,28 @@ func (i pullRequestFunctions) ListRangePRs(prNumber int) (prs []int, headSha str
 			)
 			return nil, ""
 		}
+		global.Sugar.Debugw("get pull requests", "len", len(ps))
 		for _, v := range ps {
 			// 已遍历完需要检测的 pr
 			if v.GetNumber() <= prNumber {
 				return prs, headSha
 			}
+
+			global.Sugar.Debugw("check pull request",
+				"number", v.GetNumber(),
+				"merged sha", v.GetMergeCommitSHA(),
+			)
 			// 仅处理 merged 的 pr
-			if v.GetMerged() {
+			if v.MergeCommitSHA != nil {
 				prs = append(prs, v.GetNumber())
 				// 记录最近一次 merged pr 的 commit sha
 				once.Do(func() {
 					headSha = v.GetMergeCommitSHA()
 				})
+			}
+			// 避免极端情况下，需要在调用一次 API 的情况
+			if v.GetNumber()-1 <= prNumber {
+				return prs, headSha
 			}
 		}
 		// 不太可能出现
@@ -121,51 +132,4 @@ func (i pullRequestFunctions) ListRangePRs(prNumber int) (prs []int, headSha str
 		opt.Page++
 	}
 	return prs, headSha
-}
-
-func (i pullRequestFunctions) GetAssociatedFiles(prs []int) []comm.File {
-	files := make([]comm.File, 0)
-
-	for _, v := range prs {
-		for {
-			opt := &github.ListOptions{
-				Page:    1,
-				PerPage: 3000,
-			}
-			tmp, resp, err := global.Client.PullRequests.ListFiles(
-				context.TODO(),
-				global.Conf.Repository.Spec.Source.Owner,
-				global.Conf.Repository.Spec.Source.Repository,
-				v,
-				opt)
-			if err != nil {
-				global.Sugar.Errorw("load pr file list",
-					"call api", "failed",
-					"err", err.Error(),
-				)
-				return nil
-			}
-			if resp.StatusCode != http.StatusOK {
-				global.Sugar.Errorw("load pr file list",
-					"call api", "unexpect status code",
-					"status", resp.Status,
-					"status code", resp.StatusCode,
-					"response", resp.Body,
-				)
-				return nil
-			}
-			for _, cf := range tmp {
-				files = append(files, comm.File{
-					PrNumber:   v,
-					CommitFile: cf,
-				})
-			}
-			// 结束内层循环
-			if len(tmp) < opt.PerPage {
-				break
-			}
-			opt.Page++
-		}
-	}
-	return files
 }

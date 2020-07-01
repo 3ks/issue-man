@@ -143,7 +143,7 @@ func (g generateFunctions) NewIssue(include config.Include, file string) (new *g
 	new.Title = Generate.Title(file)
 	new.Body, _ = Generate.Body(false, file, "")
 
-	new.Labels = Convert.LabelAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
+	new.Labels = Convert.SliceAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
 	new.Assignees = Get.String(global.Conf.IssueCreate.Spec.Assignees)
 	new.Milestone = Get.Int(global.Conf.IssueCreate.Spec.Milestone)
 	return
@@ -171,9 +171,9 @@ func (g generateFunctions) UpdateIssue(remove bool, file string, exist github.Is
 	// 如果文件列表为 0，则添加需要检查的 Label
 	// 反之则移除
 	if length == 0 {
-		update.Labels = Convert.LabelAdd(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
+		update.Labels = Convert.SliceAdd(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
 	} else {
-		update.Labels = Convert.LabelRemove(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
+		update.Labels = Convert.SliceRemove(update.Labels, global.Conf.Repository.Spec.Workspace.Detection.DeprecatedLabel...)
 	}
 	return
 }

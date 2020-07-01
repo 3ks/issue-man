@@ -20,7 +20,7 @@ type File struct {
 
 // 处理需同步文件
 func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
-	// 这里的操作指的是文件的操作
+	// 这里的操作指的是文件的操作，取值来自于 GitHub
 	// 至于 issue 是否存在，调用何种方法，需要额外判断
 	const (
 		ADD    = "added"
@@ -84,6 +84,7 @@ func (f File) create(include config.Include) {
 // 更新 issue，并 comment
 func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
+	// TODO 添加 label
 	updatedIssue, err := f.edit(
 		tools.Generate.UpdateIssue(false, f.CommitFile.GetFilename(), *existIssue),
 		existIssue.GetNumber(),
@@ -94,9 +95,9 @@ func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	}
 
 	// 仅 comment 特定状态（label）下的 issue
-	if f.commentVerify(existIssue) {
+	if f.commentVerify(updatedIssue) {
 		// comment
-		err = f.comment(existIssue)
+		err = f.comment(updatedIssue)
 		if err != nil {
 			return nil, err
 		}
@@ -108,8 +109,7 @@ func (f File) commentVerify(issue *github.Issue) bool {
 	if issue == nil || issue.Labels == nil {
 		return false
 	}
-
-	return false
+	return true
 }
 
 // 取 issue 的 number 和 assignees 调用 api 进行 comment

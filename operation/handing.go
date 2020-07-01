@@ -34,7 +34,9 @@ func IssueHanding(payload github.IssueCommentPayload, instructs map[string][]str
 // 这取决于 issue 的实际情况和流程定义
 func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	// 基本信息
-	info := tools.Parse.Info(payload)
+	info := comm.Info{}
+	info.Parse(payload)
+
 	info.Mention = mention
 	flow := global.Instructions[instruct]
 
@@ -52,13 +54,11 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"status", "fail",
 			"info", info,
 			"require", flow.Spec.Rules.Permissions)
-		if flow.Spec.Rules.PermissionFeedback == "" {
-			return
-		}
 		hc := comm.Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
+		// 如果 feedback 为空不会做任何操作
 		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Rules.PermissionFeedback))
 		return
 	}
@@ -71,13 +71,11 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"status", "fail",
 			"info", info,
 			"require", flow.Spec.Rules.Labels)
-		if flow.Spec.Rules.LabelFeedback == "" {
-			return
-		}
 		hc := comm.Comment{
 			Login: info.Login,
 			ReqID: info.ReqID,
 		}
+		// 如果 feedback 为空不会做任何操作
 		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Rules.LabelFeedback))
 		return
 	}
@@ -89,14 +87,12 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 			"step", "CheckCount",
 			"status", "fail",
 			"requireCount", flow.Spec.Action.AddLabelsLimit)
-		if flow.Spec.Action.LabelLimitFeedback == "" {
-			return
-		}
 		hc := comm.Comment{
 			Login:      info.Login,
 			ReqID:      info.ReqID,
 			LimitCount: flow.Spec.Action.AddLabelsLimit,
 		}
+		// 如果 feedback 为空不会做任何操作
 		tools.Issue.Comment(info.IssueNumber, hc.HandComment(flow.Spec.Action.LabelLimitFeedback))
 		return
 	}

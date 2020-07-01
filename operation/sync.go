@@ -1,9 +1,12 @@
 package operation
 
 import (
+	"context"
+	"github.com/google/go-github/v30/github"
 	"issue-man/comm"
 	"issue-man/global"
 	"issue-man/tools"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -84,14 +87,13 @@ func SyncIssues() {
 
 	// 获取 pr 列表
 	prs, headSha := tools.PR.ListRangePRs(tools.Parse.PRNumberFromBody(prIssue.GetBody()))
-	// 更新 pr issue
-	defer tools.Issue.Edit(prIssue)
-	// 最近一次 pr
-	// 如果中途失败，需要再次生成 body，以保存进度
-	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(prs[len(prs)-1], headSha)
+	if prs == nil || headSha == "" || len(prs) == 0 {
+		global.Sugar.Infow("list range prs", "status", "nothing to do")
+		return
+	}
 
 	// 获取每个 pr 涉及的文件列表
-	files := tools.PR.GetAssociatedFiles(prs)
+	files := getAssociatedFiles(prs)
 
 	// 获取现有 issue 列表
 	existIssues, err := tools.Issue.GetAllMath()
@@ -103,11 +105,20 @@ func SyncIssues() {
 		return
 	}
 
+	// 更新 pr issue
+	// TODO 保存进度？单独 sync 指定的 pr number
+	defer func() {
+		_, _ = tools.Issue.Edit(prIssue)
+	}()
+	// 最近一次 pr，如果中途失败，需要再次生成 body，以保存进度
+	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(prs[len(prs)-1], headSha)
+
 	wg := sync.WaitGroup{}
 	// 遍历文件
 	// 判断是否匹配
 	// 做出不同操作
 	lock := make(chan int, 5)
+	defer close(lock)
 	go func() {
 		// 将 API 频率限制为每秒 2 次
 		for range lock {
@@ -122,6 +133,10 @@ func SyncIssues() {
 			for _, include := range global.Conf.IssueCreate.Spec.Includes {
 				// 符合条件的文件
 				if global.Conf.IssueCreate.SupportFile(include, file.CommitFile.GetFilename()) {
+					global.Sugar.Debugw("get match file",
+						"file name", file.CommitFile.GetFilename(),
+						"match include", include,
+					)
 					lock <- 1
 					file.Sync(
 						include,
@@ -135,4 +150,51 @@ func SyncIssues() {
 		}(file)
 	}
 	wg.Wait()
+}
+
+func getAssociatedFiles(prs []int) []comm.File {
+	files := make([]comm.File, 0)
+
+	for _, v := range prs {
+		for {
+			opt := &github.ListOptions{
+				Page:    1,
+				PerPage: 3000,
+			}
+			tmp, resp, err := global.Client.PullRequests.ListFiles(
+				context.TODO(),
+				global.Conf.Repository.Spec.Source.Owner,
+				global.Conf.Repository.Spec.Source.Repository,
+				v,
+				opt)
+			if err != nil {
+				global.Sugar.Errorw("load pr file list",
+					"call api", "failed",
+					"err", err.Error(),
+				)
+				return nil
+			}
+			if resp.StatusCode != http.StatusOK {
+				global.Sugar.Errorw("load pr file list",
+					"call api", "unexpect status code",
+					"status", resp.Status,
+					"status code", resp.StatusCode,
+					"response", resp.Body,
+				)
+				return nil
+			}
+			for _, cf := range tmp {
+				files = append(files, comm.File{
+					PrNumber:   v,
+					CommitFile: cf,
+				})
+			}
+			// 结束内层循环
+			if len(tmp) < opt.PerPage {
+				break
+			}
+			opt.Page++
+		}
+	}
+	return files
 }
