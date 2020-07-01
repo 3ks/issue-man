@@ -22,9 +22,13 @@ spec:
       needLabel:
       - "status/waiting-for-update"
       - "status/need-sync"
+      addLabel:
+      - "status/need-sync"
+      removeLabel:
+      - "status/pending"
       deprecatedLabel:
       - "status/need-confirm"
-  port: ":80"
+  port: ":8080"
   logLevel: "dev"
   verbose: false
 ---
@@ -39,6 +43,7 @@ spec:
     - "html"
   labels:
   - "kind/page"
+  - "status/new"
   assignees:
   - "3ks"
 # milestone: 1
@@ -98,6 +103,7 @@ spec:
     labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
     removeLabels:
     - "status/pending"
+    - "status/new"
     addAssignees:
     - "@commenter"
     successFeedback: "Thanks @commenter, this issue has been assigned to you!"
@@ -123,6 +129,7 @@ spec:
     removeLabels:
     - "status/need-sync"
     - "status/stale"
+    - "status/new"
     successFeedback: "Nice job @commenter, you will be notified when something needs to be updated, other than that, you don’t need to check it manually."
     failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
@@ -146,6 +153,7 @@ spec:
     - "status/need-sync"
     - "status/waiting-for-update"
     - "status/stale"
+    - "status/new"
     removeAssignees:
     - "@all-assignees"
     successFeedback: "Thank you @assignees, I'll see you again!"

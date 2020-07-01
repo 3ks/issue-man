@@ -120,3 +120,14 @@ func (c convertFunctions) Reverse(source []int) []int {
 	}
 	return source
 }
+
+// Reverse
+// 将 slice 逆序
+func (c convertFunctions) ReversePR(source []*github.PullRequest) []*github.PullRequest {
+	for i, j := 0, len(source)-1; i < j; {
+		source[i], source[j] = source[j], source[i]
+		i++
+		j--
+	}
+	return source
+}

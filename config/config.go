@@ -44,9 +44,12 @@ type Repository struct {
 			Repository     string `yaml:"repository"`
 			MaintainerTeam string `yaml:"maintainerTeam"`
 			Detection      struct {
-				At              string   `yaml:"at"`
-				PRIssue         int      `yaml:"prIssue"`
+				At      string `yaml:"at"`
+				PRIssue int    `yaml:"prIssue"`
+				// Comment Need Label
 				NeedLabel       []string `yaml:"needLabel"`
+				AddLabel        []string `yaml:"addLabel"`
+				RemoveLabel     []string `yaml:"removeLabel"`
 				DeprecatedLabel []string `yaml:"deprecatedLabel"`
 			} `yaml:"detection"`
 		} `yaml:"workspace"` // 工作库

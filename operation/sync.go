@@ -86,9 +86,9 @@ func SyncIssues() {
 	}
 
 	// 获取 pr 列表
-	prs, headSha := tools.PR.ListRangePRs(tools.Parse.PRNumberFromBody(prIssue.GetBody()))
-	if prs == nil || headSha == "" || len(prs) == 0 {
-		global.Sugar.Infow("list range prs", "status", "nothing to do")
+	prs := tools.PR.ListRangePRs(tools.Parse.PRNumberFromBody(prIssue.GetBody()))
+	if len(prs) == 0 {
+		global.Sugar.Infow("list range merged pull requests", "status", "nothing to do")
 		return
 	}
 
@@ -111,7 +111,8 @@ func SyncIssues() {
 		_, _ = tools.Issue.Edit(prIssue)
 	}()
 	// 最近一次 pr，如果中途失败，需要再次生成 body，以保存进度
-	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(prs[len(prs)-1], headSha)
+	latestPR := prs[len(prs)-1]
+	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
 
 	wg := sync.WaitGroup{}
 	// 遍历文件
@@ -152,7 +153,7 @@ func SyncIssues() {
 	wg.Wait()
 }
 
-func getAssociatedFiles(prs []int) []comm.File {
+func getAssociatedFiles(prs []*github.PullRequest) []comm.File {
 	files := make([]comm.File, 0)
 
 	for _, v := range prs {
@@ -165,7 +166,7 @@ func getAssociatedFiles(prs []int) []comm.File {
 				context.TODO(),
 				global.Conf.Repository.Spec.Source.Owner,
 				global.Conf.Repository.Spec.Source.Repository,
-				v,
+				v.GetNumber(),
 				opt)
 			if err != nil {
 				global.Sugar.Errorw("load pr file list",
@@ -185,8 +186,10 @@ func getAssociatedFiles(prs []int) []comm.File {
 			}
 			for _, cf := range tmp {
 				files = append(files, comm.File{
-					PrNumber:   v,
-					CommitFile: cf,
+					PrNumber:       v.GetNumber(),
+					MergedAt:       v.GetMergedAt().In(time.Local).String(),
+					MergeCommitSHA: v.GetMergeCommitSHA(),
+					CommitFile:     cf,
 				})
 			}
 			// 结束内层循环

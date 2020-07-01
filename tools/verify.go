@@ -31,6 +31,29 @@ func (v verifyFunctions) HasLabel(source []string, require ...string) bool {
 	return true
 }
 
+// HasAnyLabel
+// 要求 require 的任意一个元素在 source 之中就可以
+func (v verifyFunctions) HasAnyLabel(source []string, require ...string) bool {
+	if len(require) == 0 {
+		return true
+	}
+	if len(source) == 0 {
+		return false
+	}
+
+	requireLabels := make(map[string]bool)
+	for _, value := range require {
+		requireLabels[value] = true
+	}
+
+	for _, value := range source {
+		if requireLabels[value] {
+			return true
+		}
+	}
+	return false
+}
+
 const (
 	Anyone     = "@anyone"
 	Assignees  = "@assignees"

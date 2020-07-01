@@ -14,8 +14,10 @@ import (
 )
 
 type File struct {
-	PrNumber   int
-	CommitFile *github.CommitFile
+	PrNumber       int
+	MergedAt       string
+	MergeCommitSHA string
+	CommitFile     *github.CommitFile
 }
 
 // 处理需同步文件
@@ -51,42 +53,23 @@ func (f File) Sync(include config.Include, existIssue, preIssue *github.Issue) {
 	}
 }
 
-// 更新 issue，并 comment 如果 issue 不存在，则创建
+// 创建 issue，无 comment
 func (f File) create(include config.Include) {
-	issue := tools.Generate.NewIssue(include, *f.CommitFile.Filename)
-	_, resp, err := global.Client.Issues.Create(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		issue,
-	)
-	if err != nil {
-		global.Sugar.Errorw("sync create issues",
-			"step", "create",
-			"title", issue.Title,
-			"body", issue.Body,
-			"err", err.Error())
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("init issues",
-			"step", "create",
-			"title", issue.Title,
-			"body", issue.Body,
-			"status code", resp.StatusCode,
-			"resp body", string(body))
-		return
-	}
+	// 创建通用 issue，按照 create 相关配置初始化、分级
+	_, _ = tools.Issue.Create(tools.Generate.NewIssue(include, *f.CommitFile.Filename))
+	// 无需 comment
 }
 
 // 更新 issue，并 comment
 func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
-	// TODO 添加 label
+	issue := tools.Generate.UpdateIssue(false, f.CommitFile.GetFilename(), *existIssue)
+	// 添加和移除一些 label
+	issue.Labels = tools.Convert.SliceAdd(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.AddLabel...)
+	issue.Labels = tools.Convert.SliceRemove(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.RemoveLabel...)
+
 	updatedIssue, err := f.edit(
-		tools.Generate.UpdateIssue(false, f.CommitFile.GetFilename(), *existIssue),
+		issue,
 		existIssue.GetNumber(),
 		"update",
 	)
@@ -94,14 +77,9 @@ func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 		return nil, err
 	}
 
-	// 仅 comment 特定状态（label）下的 issue
-	if f.commentVerify(updatedIssue) {
-		// comment
-		err = f.comment(updatedIssue)
-		if err != nil {
-			return nil, err
-		}
-	}
+	// comment
+	_ = f.comment(updatedIssue)
+
 	return updatedIssue, nil
 }
 
@@ -109,53 +87,52 @@ func (f File) commentVerify(issue *github.Issue) bool {
 	if issue == nil || issue.Labels == nil {
 		return false
 	}
-	return true
+	return tools.Verify.HasAnyLabel(*tools.Convert.Label(issue.Labels), global.Conf.Repository.Spec.Workspace.Detection.NeedLabel...)
 }
 
 // 取 issue 的 number 和 assignees 调用 api 进行 comment
 // comment 内容为相关文件改动的提示
 func (f File) comment(issue *github.Issue) error {
-	// comment
-	body := ""
+	// 对于不满足要求的 issue，不进行 comment
+	if !f.commentVerify(issue) {
+		return nil
+	}
+	// TODO 模板
 	bf := bytes.Buffer{}
-	bf.WriteString("maintainer: ")
+	bf.WriteString(fmt.Sprintf("Pull Request: https://github.com/%s/%s/pull/%d",
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		f.PrNumber))
+
+	bf.WriteString(fmt.Sprintf("\n\nDiff: https://github.com/%s/%s/pull/%d/files#diff-%s",
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		f.PrNumber, fmt.Sprintf("%x", md5.Sum([]byte(f.CommitFile.GetFilename())))))
+
+	bf.WriteString(fmt.Sprintf("\n\nCommit SHA: [%s](https://github.com/%s/%s/blob/%s/%s)",
+		f.MergeCommitSHA,
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		f.MergeCommitSHA,
+		f.CommitFile.GetFilename(),
+	))
+
+	bf.WriteString(fmt.Sprintf("\n\nMerged At: %s", f.MergedAt))
+
+	bf.WriteString(fmt.Sprintf("\n\nFilename: %s", f.CommitFile.GetFilename()))
+
+	if f.CommitFile.GetPreviousFilename() != "" {
+		bf.WriteString(fmt.Sprintf("\n\nPrevious Filename: %s", f.CommitFile.GetPreviousFilename()))
+	}
+
+	bf.WriteString(fmt.Sprintf("\n\nStatus: %s", f.CommitFile.GetStatus()))
+
+	bf.WriteString("\n\nAssignees: ")
 	for _, v := range issue.Assignees {
 		bf.WriteString(fmt.Sprintf("@%s ", v.GetLogin()))
 	}
-	// TODO 抽取配置
-	bf.WriteString(fmt.Sprintf("\nstatus: %s", f.CommitFile.GetStatus()))
-	bf.WriteString(fmt.Sprintf("\npr: https://github.com/istio/istio.io/pull/%d", f.PrNumber))
-	bf.WriteString(fmt.Sprintf("\ndiff: https://github.com/istio/istio.io/pull/%d/files#diff-%s",
-		f.PrNumber, fmt.Sprintf("%x", md5.Sum([]byte(f.CommitFile.GetFilename())))))
-	body = bf.String()
 
-	comment := &github.IssueComment{}
-	comment.Body = &body
-	_, resp, err := global.Client.Issues.CreateComment(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		issue.GetNumber(),
-		comment)
-
-	if err != nil {
-		global.Sugar.Errorw("sync issue comment",
-			"step", "call api",
-			"status", "fail",
-			"file", f,
-			"err", err.Error())
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("CheckCount",
-			"step", "parse response",
-			"status", "fail",
-			"statusCode", resp.StatusCode,
-			"body", string(body))
-		return err
-	}
+	tools.Issue.Comment(issue.GetNumber(), bf.String())
 	return nil
 }
 
@@ -178,10 +155,7 @@ func (f File) remove(issue *github.Issue) {
 	}
 
 	// comment
-	err = f.comment(updatedIssue)
-	if err != nil {
-		return
-	}
+	_ = f.comment(updatedIssue)
 }
 
 // 对于 renamed 文件，需要：
@@ -211,7 +185,7 @@ func (f File) rename(include config.Include, existIssue, preIssue *github.Issue)
 				return
 			}
 			// comment
-			f.comment(updatedIssue)
+			_ = f.comment(updatedIssue)
 		} else {
 			// 由于 existIssue 和 preIssue 不是同一个 issue
 			// 需要分别完成更新、移除

@@ -26,6 +26,9 @@ func Start(conf config.Config) {
 
 	// 定义监听路由
 	router := gin.Default()
+	if global.Conf.Repository.Spec.LogLevel != "dev" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	v1 := router.Group("/api/v1")
 	{
@@ -47,6 +50,10 @@ func Start(conf config.Config) {
 
 // 假冒伪劣中间件
 func check(c *gin.Context) {
+	if global.Conf.Repository.Spec.LogLevel == "dev" {
+		c.Next()
+		return
+	}
 	// 假装要一个 token
 	reqUnix, err := strconv.Atoi(c.Query("token"))
 	if err != nil {
