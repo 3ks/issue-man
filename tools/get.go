@@ -2,7 +2,11 @@ package tools
 
 import "issue-man/global"
 
-func (g getFunctions) String(source []string) *[]string {
+func (g getFunctions) String(source string) *string {
+	return &source
+}
+
+func (g getFunctions) Strings(source []string) *[]string {
 	newSlice := make([]string, len(source))
 	copy(source, newSlice)
 	return &newSlice

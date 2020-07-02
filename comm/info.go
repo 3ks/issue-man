@@ -35,36 +35,39 @@ type Info struct {
 // Info
 // 从 IssueCommentPayload 里的一些信息
 // 避免多次书写出现错误
-func (p Info) Parse(payload github.IssueCommentPayload) (info Info) {
+func (p *Info) Parse(payload github.IssueCommentPayload) {
 	defer func() {
-		if p := recover(); p != nil {
-			global.Sugar.Errorw("Info panic",
-				"req_id", info.ReqID,
-				"panic", p)
+		if pc := recover(); pc != nil {
+			global.Sugar.Errorw("Info pc",
+				"req_id", p.ReqID,
+				"pc", pc)
 		}
 	}()
-	info.ReqID = uuid.New().String()
-	info.Owner = payload.Repository.Owner.Login
-	info.Repository = payload.Repository.Name
 
-	info.Login = payload.Sender.Login
+	p.ReqID = uuid.New().String()
+	p.Owner = payload.Repository.Owner.Login
+	p.Repository = payload.Repository.Name
 
-	info.IssueURL = payload.Issue.URL
-	info.IssueNumber = int(payload.Issue.Number)
-	info.Title = payload.Issue.Title
-	info.Body = payload.Issue.Body
-	info.Milestone = int(payload.Issue.Milestone.Number)
-	info.State = payload.Issue.State
+	p.Login = payload.Sender.Login
 
-	info.Assignees = make([]string, len(payload.Issue.Assignees))
-	info.Labels = make([]string, len(payload.Issue.Labels))
+	p.IssueURL = payload.Issue.URL
+	p.IssueNumber = int(payload.Issue.Number)
+	p.Title = payload.Issue.Title
+	p.Body = payload.Issue.Body
+	p.State = payload.Issue.State
+
+	if payload.Issue.Milestone != nil {
+		p.Milestone = int(payload.Issue.Milestone.Number)
+	}
+
+	p.Assignees = make([]string, len(payload.Issue.Assignees))
+	p.Labels = make([]string, len(payload.Issue.Labels))
 	for i := 0; i < len(payload.Issue.Assignees) || i < len(payload.Issue.Labels); i++ {
-		if i < len(info.Assignees) {
-			info.Assignees[i] = payload.Issue.Assignees[i].Login
+		if i < len(p.Assignees) {
+			p.Assignees[i] = payload.Issue.Assignees[i].Login
 		}
-		if i < len(info.Labels) {
-			info.Labels[i] = payload.Issue.Labels[i].Name
+		if i < len(p.Labels) {
+			p.Labels[i] = payload.Issue.Labels[i].Name
 		}
 	}
-	return
 }

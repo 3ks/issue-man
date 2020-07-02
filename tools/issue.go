@@ -145,8 +145,8 @@ func (i issueFunctions) EditByIssueRequest(number int, issue *github.IssueReques
 	if err != nil {
 		global.Sugar.Errorw("edit issues",
 			"step", "call api",
-			"title", issue.Title,
-			"body", issue.Body,
+			"number", number,
+			"issue", issue,
 			"err", err.Error())
 		return
 	}
@@ -155,8 +155,8 @@ func (i issueFunctions) EditByIssueRequest(number int, issue *github.IssueReques
 		body, _ := ioutil.ReadAll(resp.Body)
 		global.Sugar.Errorw("edit issues",
 			"step", "check response code",
-			"title", issue.Title,
-			"body", issue.Body,
+			"number", number,
+			"issue", issue,
 			"status code", resp.StatusCode,
 			"resp body", string(body))
 		err = fmt.Errorf("response code: %d, body:%s", resp.StatusCode, string(body))

@@ -89,12 +89,12 @@ func Load(c *gin.Context) {
 func Webhooks(c *gin.Context) {
 	hook, _ := github.New()
 	// 解析的事件列表
-	p, err := hook.Parse(c.Request, []github.Event{
+	p, err := hook.Parse(c.Request,
 		github.IssueCommentEvent,
 		github.MembershipEvent,
 		github.OrganizationEvent,
 		github.PullRequestEvent,
-	}...)
+	)
 	if err != nil {
 		global.Sugar.Errorw("unmarshal payload",
 			"status", "fail",

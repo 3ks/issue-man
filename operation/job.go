@@ -66,7 +66,7 @@ func Job(fullName string, Sync config.Job) {
 			// 预期打上 stale 的时间
 			exceptedTime := createdAt.AddDate(0, 0, int(Sync.In))
 
-			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will not label: %v\n", createdAt.String(), exceptedTime.String(), time.Now().Sub(exceptedTime) < 0)
+			fmt.Printf("wating-for-pr created at: %v, excepted labe stale at: %v, will not label: %v\n", createdAt.Strings(), exceptedTime.Strings(), time.Now().Sub(exceptedTime) < 0)
 			// 暂不添加 stale 标签，下次一定
 			// 当前时间 < 应该打上 stale 的时间，则下次一定
 			if time.Now().Sub(exceptedTime) < 0 {
@@ -165,7 +165,7 @@ func remind(owner, repository string, issueNumber int, login, instructName, warn
 		// 今天已提醒过
 		// todo 测试时可注释掉
 		if now.Year() == remindAt.Year() && now.Month() == remindAt.Month() && now.Day() == remindAt.Day() {
-			fmt.Printf("already remind today. date: %v\n", remindAt.String())
+			fmt.Printf("already remind today. date: %v\n", remindAt.Strings())
 			return
 		}
 	}

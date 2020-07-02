@@ -2,15 +2,12 @@ package comm
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"fmt"
 	"github.com/google/go-github/v30/github"
-	"io/ioutil"
 	"issue-man/config"
 	"issue-man/global"
 	"issue-man/tools"
-	"net/http"
 )
 
 type File struct {
@@ -68,11 +65,7 @@ func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	issue.Labels = tools.Convert.SliceAdd(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.AddLabel...)
 	issue.Labels = tools.Convert.SliceRemove(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.RemoveLabel...)
 
-	updatedIssue, err := f.edit(
-		issue,
-		existIssue.GetNumber(),
-		"update",
-	)
+	updatedIssue, err := tools.Issue.EditByIssueRequest(existIssue.GetNumber(), issue)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +80,7 @@ func (f File) commentVerify(issue *github.Issue) bool {
 	if issue == nil || issue.Labels == nil {
 		return false
 	}
-	return tools.Verify.HasAnyLabel(*tools.Convert.Label(issue.Labels), global.Conf.Repository.Spec.Workspace.Detection.NeedLabel...)
+	return tools.Verify.HasAnyLabel(*tools.Convert.Label(issue.Labels), global.Conf.Repository.Spec.Workspace.Detection.NeedLabel...) && len(issue.Assignees) > 0
 }
 
 // 取 issue 的 number 和 assignees 调用 api 进行 comment
@@ -136,7 +129,7 @@ func (f File) comment(issue *github.Issue) error {
 	return nil
 }
 
-// 删除 issue 中的文件，更新后 issue 内无文件的情况，添加特殊 label 标识，maintainer 手动处理
+// 删除 issue 中的文件
 func (f File) remove(issue *github.Issue) {
 	if issue == nil {
 		global.Sugar.Warnw("remove exist file issue",
@@ -144,12 +137,7 @@ func (f File) remove(issue *github.Issue) {
 			"file", f)
 		return
 	}
-	updatedIssue, err := f.edit(
-		tools.Generate.UpdateIssue(true, f.CommitFile.GetPreviousFilename(), *issue),
-		issue.GetNumber(),
-		"remove",
-	)
-
+	updatedIssue, err := tools.Issue.EditByIssueRequest(issue.GetNumber(), tools.Generate.UpdateIssue(true, f.CommitFile.GetPreviousFilename(), *issue))
 	if err != nil {
 		return
 	}
@@ -170,17 +158,15 @@ func (f File) rename(include config.Include, existIssue, preIssue *github.Issue)
 			f.update(existIssue)
 			global.Sugar.Warnw("renamed file issue",
 				"status", "has no match previous issue",
-				"file", f)
+				"filename", f.CommitFile.GetFilename(),
+				"previous filename", f.CommitFile.GetPreviousFilename(),
+			)
 			return
 		}
 		// existIssue 和 preIssue 是同一个 issue
 		if existIssue.GetNumber() == preIssue.GetNumber() {
 			// 由于是同一个 issue，可以一次性完成更新，移除
-			updatedIssue, err := f.edit(
-				tools.Generate.UpdateIssueRequest(true, f.CommitFile.GetPreviousFilename(), tools.Generate.UpdateIssue(false, *f.CommitFile.Filename, *existIssue)),
-				existIssue.GetNumber(),
-				"renamed",
-			)
+			updatedIssue, err := tools.Issue.EditByIssueRequest(existIssue.GetNumber(), tools.Generate.UpdateIssueRequest(true, f.CommitFile.GetPreviousFilename(), tools.Generate.UpdateIssue(false, *f.CommitFile.Filename, *existIssue)))
 			if err != nil {
 				return
 			}
@@ -201,36 +187,4 @@ func (f File) rename(include config.Include, existIssue, preIssue *github.Issue)
 			f.remove(preIssue)
 		}
 	}
-}
-
-func (f File) edit(issue *github.IssueRequest, number int, option string) (*github.Issue, error) {
-	updatedIssue, resp, err := global.Client.Issues.Edit(
-		context.TODO(),
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-		number,
-		issue,
-	)
-	if err != nil {
-		global.Sugar.Errorw("init issues",
-			"step", "update",
-			"id", number,
-			"title", issue.Title,
-			"body", issue.Body,
-			"err", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		global.Sugar.Errorw("edit issues",
-			"step", option,
-			"id", number,
-			"title", issue.Title,
-			"body", issue.Body,
-			"status code", resp.StatusCode,
-			"resp body", string(body))
-		return nil, err
-	}
-	return updatedIssue, nil
 }

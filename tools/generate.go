@@ -144,7 +144,7 @@ func (g generateFunctions) NewIssue(include config.Include, file string) (new *g
 	new.Body, _ = Generate.Body(false, file, "")
 
 	new.Labels = Convert.SliceAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
-	new.Assignees = Get.String(global.Conf.IssueCreate.Spec.Assignees)
+	new.Assignees = Get.Strings(global.Conf.IssueCreate.Spec.Assignees)
 	new.Milestone = Get.Int(global.Conf.IssueCreate.Spec.Milestone)
 	return
 }

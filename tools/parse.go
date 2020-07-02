@@ -55,7 +55,7 @@ func (p parseFunctions) parseInstruct(s string) (is string, peoples []string) {
 	if is == "" {
 		return
 	}
-	is = strings.TrimSpace(is)
+	is = strings.TrimPrefix(strings.TrimSpace(is), "/")
 
 	peoples = regexp.MustCompile("^@.*? ").FindAllString(s, -1)
 	if len(peoples) == 0 {

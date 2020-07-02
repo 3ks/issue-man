@@ -10,9 +10,9 @@ import (
 const (
 	IssueOpen   = "open"
 	IssueClosed = "closed"
-	Commenter   = "@commenter"    // assignee 或 unassignee 评论者
-	Mention     = "@mention"      // assignee 或 unassignee 提及的人
-	AllAssignee = "@all-assignee" // assignee 或 unassignee 提及的人
+	Commenter   = "@commenter"    // 评论者
+	Mention     = "@mention"      // comment 提及的人
+	AllAssignee = "@all-assignee" // 所有 assignees
 )
 
 // 对 issue 进行修改
@@ -25,17 +25,15 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 		Title:     &info.Title,
 		Body:      &info.Body,
 		Milestone: &info.Milestone, //TODO 0？
+		State:     tools.Get.String(IssueOpen),
 	}
 	if edit.GetMilestone() == 0 {
 		edit.Milestone = nil
 	}
-
 	// 是否关闭 issue
-	closeIssue := IssueOpen
 	if flow.Spec.Action.State == IssueClosed {
-		closeIssue = IssueClosed
+		edit.State = tools.Get.String(IssueClosed)
 	}
-	edit.State = &closeIssue
 
 	// 更新 label（如果有的话）
 	updateLabel(edit, info, flow)
@@ -69,27 +67,28 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 }
 
 // 根据 flow 更新 info 中的 label
+// TODO invalid?
 func updateLabel(req *gg.IssueRequest, info comm.Info, flow config.IssueComment) {
-	req.Labels = tools.Convert.SliceAdd(tools.Convert.SliceRemove(tools.Get.String(info.Labels), flow.Spec.Action.RemoveLabels...), flow.Spec.Action.AddLabels...)
+	req.Labels = tools.Convert.SliceAdd(tools.Convert.SliceRemove(tools.Get.Strings(info.Labels), flow.Spec.Action.RemoveLabels...), flow.Spec.Action.AddLabels...)
 }
 
 // 根据 flow 更新 info 中的 assignees
 func updateAssign(req *gg.IssueRequest, info comm.Info, flow config.IssueComment) {
 	// 将当前 assignees 列表转为 map，方便操作
-	assign := tools.Convert.StringToMap(info.Assignees)
+	assignMap := tools.Convert.StringToMap(info.Assignees)
 	// defer 将最终 assignees 列表转为 slice 并赋值给 req
 	defer func() {
-		req.Assignees = tools.Convert.MapToString(assign)
+		req.Assignees = tools.Convert.MapToString(assignMap)
 	}()
 
 	// 添加的 assigner
 	for _, v := range flow.Spec.Action.AddAssignees {
 		switch v {
 		case Commenter:
-			assign[info.Login] = true
+			assignMap[info.Login] = true
 		case Mention:
 			for _, v := range info.Mention {
-				assign[v] = true
+				assignMap[v] = true
 			}
 		}
 	}
@@ -98,13 +97,13 @@ func updateAssign(req *gg.IssueRequest, info comm.Info, flow config.IssueComment
 	for _, v := range flow.Spec.Action.RemoveAssignees {
 		switch v {
 		case Commenter:
-			delete(assign, info.Login)
+			delete(assignMap, info.Login)
 		case Mention:
 			for _, v := range info.Mention {
-				delete(assign, v)
+				delete(assignMap, v)
 			}
 		case AllAssignee:
-			assign = make(map[string]bool)
+			assignMap = make(map[string]bool)
 			return
 		}
 	}

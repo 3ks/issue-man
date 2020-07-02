@@ -70,7 +70,7 @@ func Init(token string, conf *config.Config) {
 	Sugar.Infow("load config", "config", conf)
 	// 从配置文件读取指令列表
 	for _, v := range Conf.IssueComments {
-		Instructions[v.Metadata.Name] = v
+		Instructions[v.Spec.Rules.Instruct] = v
 	}
 	Sugar.Debugw("load instructs", "done", Instructions)
 
