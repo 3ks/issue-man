@@ -99,7 +99,7 @@ spec:
   action:
     addLabels:
     - "status/need-sync"
-    addLabelsLimit: 10
+    addLabelsLimit: 0
     labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
     removeLabels:
     - "status/pending"
@@ -174,11 +174,12 @@ spec:
   action:
     state: "closed"
     addLabels:
-    - "status/graduate"
+    - "status/graduated"
     removeLabels:
     - "status/need-sync"
     - "status/waiting-for-update"
     - "status/stale"
+    - "status/new"
     successFeedback: "Thank you @assignees, This is a great moment!"
     failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---

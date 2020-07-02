@@ -56,8 +56,8 @@ func (v verifyFunctions) HasAnyLabel(source []string, require ...string) bool {
 
 const (
 	Anyone     = "@anyone"
-	Assignees  = "@assignees"
-	Maintainer = "@maintainers"
+	Assignees  = "@assigner"
+	Maintainer = "@maintainer"
 	Member     = "@member"
 )
 

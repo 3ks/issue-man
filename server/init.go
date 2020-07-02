@@ -20,13 +20,17 @@ import (
 // 1. 包含 _index 开头的文件的目录，创建统一的 issue（但会继续遍历相关子目录），由 maintainer 统一管理。
 // 3. 以包含 .md 文件的目录为单位，创建 issue（即一个目录可能包含多个 .md 文件）
 func Init(conf config.Config) {
+	lock <- 1
+	defer func() {
+		<-lock
+	}()
 	// init 始终基于最新 pr 来完成，
 	// 所以这里直接更新 pr issue body
 	prIssue := tools.Issue.GetPRIssue()
 	latestPR := tools.PR.LatestMerged()
 	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
 	defer tools.Issue.Edit(prIssue)
-	genAndCreateIssues()
+	genAndCreateIssues(latestPR.GetMergeCommitSHA())
 }
 
 // 根据配置、文件列表、已存在 issue，判断生成最终操作列表
@@ -37,9 +41,9 @@ func Init(conf config.Config) {
 // 2. 遍历，根据 title 判断 issue 是否已经存在
 // 3. 更新 issue（如果文件有变化），assignees 如果不为空，则不修改，如果为空则判断配置是否有配置 assignees，如都为空则不操作。
 // 4. 创建 issue
-func genAndCreateIssues() {
+func genAndCreateIssues(sha string) {
 	// 获取全部需要处理的文件
-	fs, err := tools.Tree.GetAllMatchFile()
+	fs, err := tools.Tree.GetAllMatchFile(sha)
 	if err != nil {
 		global.Sugar.Errorw("Get upstream files",
 			"status", "fail",

@@ -17,11 +17,17 @@ import (
 	"time"
 )
 
-// TODO 定期检查同步状态。
+var (
+	// Init、Sync、Webhook 竞争该锁，
+	// 三个函数不能同时执行
+	lock chan int
+)
+
 func Start(conf config.Config) {
 	// 定时检测任务
 	go operation.Sync()
 
+	lock = make(chan int, 1)
 	// 初始化处理的事件列表
 
 	// 定义监听路由
@@ -32,6 +38,7 @@ func Start(conf config.Config) {
 
 	v1 := router.Group("/api/v1")
 	{
+		v1.GET("/init", check, InitIssue)
 		v1.GET("/sync", check, Sync)
 		v1.GET("/load", check, Load)
 		v1.POST("/webhooks/", Webhooks)
@@ -61,8 +68,8 @@ func check(c *gin.Context) {
 		return
 	}
 	sub := time.Now().Unix() - int64(reqUnix)
-	// 只允许 10 秒钟的偏差
-	if sub > 10 || sub < -10 {
+	// 允许 60 秒钟的偏差
+	if sub > 60 || sub < -60 {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "unauthorized"})
 		return
 	}
@@ -71,8 +78,23 @@ func check(c *gin.Context) {
 
 // 手动调用更新函数
 func Sync(c *gin.Context) {
+	select {
+	case lock <- 1:
+	case <-time.NewTimer(time.Second * 3).C:
+		c.JSON(http.StatusOK, gin.H{"status": "fail", "cause": "other task in progressing"})
+		return
+	}
+	defer func() {
+		<-lock
+	}()
 	operation.SyncIssues()
 	c.JSON(http.StatusOK, gin.H{"status": "done"})
+}
+
+// 重新初始化，不会重复创建 issue，可以修复一些文件列表异常的 issue，
+func InitIssue(c *gin.Context) {
+	go Init(*global.Conf)
+	c.JSON(http.StatusOK, gin.H{"status": "doing"})
 }
 
 // 更新 maintainer 和 member 列表
@@ -87,6 +109,15 @@ func Load(c *gin.Context) {
 // 拼装数据：根据 GitHub API 要求，以及自身需要拼装数据
 // 发送请求：https://github.com/google/go-github
 func Webhooks(c *gin.Context) {
+	select {
+	case lock <- 1:
+	case <-time.NewTimer(time.Second * 3).C:
+		c.JSON(http.StatusOK, gin.H{"status": "fail", "cause": "other task in progressing"})
+		return
+	}
+	defer func() {
+		<-lock
+	}()
 	hook, _ := github.New()
 	// 解析的事件列表
 	p, err := hook.Parse(c.Request,

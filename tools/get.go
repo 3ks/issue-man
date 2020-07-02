@@ -8,7 +8,7 @@ func (g getFunctions) String(source string) *string {
 
 func (g getFunctions) Strings(source []string) *[]string {
 	newSlice := make([]string, len(source))
-	copy(source, newSlice)
+	copy(newSlice, source)
 	return &newSlice
 }
 

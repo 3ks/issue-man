@@ -9,14 +9,14 @@ import (
 
 // GetAllMatchFile
 // 基于 tree 获取 resource 中所有符合条件的文件
-func (t treeFunctions) GetAllMatchFile() (files map[string]string, err error) {
+func (t treeFunctions) GetAllMatchFile(sha string) (files map[string]string, err error) {
 	c := *global.Conf
 	global.Sugar.Debugw("load upstream files",
 		"step", "start")
 	ts, resp, err := global.Client.Git.GetTree(context.TODO(),
 		c.Repository.Spec.Source.Owner,
 		c.Repository.Spec.Source.Repository,
-		"master",
+		sha,
 		true,
 	)
 	if err != nil {
