@@ -1,0 +1,236 @@
+apiVersion: "v1"
+kind: "Repository"
+metadata:
+  name: "3ks.dev"
+spec:
+  source:
+    owner: "facebookincubator"
+    repository: "ent"
+    site: "entgo.io/docs"
+    removePrefix: "content"
+  translate:
+    owner: "3ks"
+    repository: "ent-doc"
+    site: "3ks.gitbook.io/ent-doc"
+  workspace:
+    owner: "1kib"
+    repository: "ent"
+    maintainerTeam: "ent-maintainer"
+    detection:
+      at: "09:00"
+      prIssue: 1
+      addLabel:
+      - "status/need-sync"
+      deprecatedLabel:
+      - "status/need-confirm"
+  port: ":8080"
+  logLevel: "dev"
+  verbose: false
+---
+apiVersion: "v1"
+kind: "IssueCreate"
+metadata:
+  name: "issue-create"
+spec:
+  prefix: "content/en"
+  fileType:
+    - "md"
+    - "html"
+  labels:
+  - "kind/page"
+  - "status/new"
+  assignees:
+  - "3ks"
+# milestone: 1
+  content: "content/en/"
+  includes:
+# 判断逻辑为包含，而不是前缀
+#  - path: "content/en/docs/reference/commands"
+#    label: "priority/P0"
+#  - path: "content/en/docs/reference/config"
+#    label: "priority/P0"
+  - path: "_index"
+    labels:
+    - "status/pending"
+    - "priority/P0"
+  - path: "content/en/docs/"
+    labels:
+    - "status/pending"
+    - "priority/P1"
+    exclude:
+    - path: "content/en/docs/reference/commands"
+    - path: "content/en/docs/reference/config"
+  - path: "content/en/faq/"
+    labels:
+    - "status/pending"
+    - "priority/P2"
+  - path: "content/en/blog/"
+    labels:
+    - "status/pending"
+    - "priority/P3"
+  - path: "content/en/news/"
+    labels:
+    - "status/pending"
+    - "priority/P3"
+  - path: "content/en/about/"
+    labels:
+    - "status/pending"
+    - "priority/P4"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-accept"
+spec:
+  rules:
+    instruct: "accept"
+    permissions:
+    - "@maintainer"
+    - "@member"
+    permissionFeedback: "@commenter, you need to join the organization first."
+    labels:
+    - "status/pending"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    addLabels:
+    - "status/need-sync"
+    addLabelsLimit: 0
+    labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
+    removeLabels:
+    - "status/pending"
+    - "status/new"
+    addAssignees:
+    - "@commenter"
+    successFeedback: "Thanks @commenter, this issue has been assigned to you!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-sync"
+spec:
+  rules:
+    instruct: "synced"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+    permissionFeedback: "@commenter, You can't execute this instruction on this issue."
+    labels:
+    - "status/need-sync"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    addLabels:
+    - "status/waiting-for-update"
+    removeLabels:
+    - "status/need-sync"
+    - "status/stale"
+    - "status/new"
+    successFeedback: "Nice job @commenter, you will be notified when something needs to be updated, other than that, you don’t need to check it manually."
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-wavier"
+spec:
+  rules:
+    instruct: "wavier"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+    labels:
+    - "kind/page"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    addLabels:
+    - "status/pending"
+    removeLabels:
+    - "status/need-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    - "status/new"
+    removeAssignees:
+    - "@all-assignees"
+    successFeedback: "Thank you @assignees, I'll see you again!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-grad"
+spec:
+  rules:
+    instruct: "grad"
+    permissions:
+    - "@maintainer"
+    labels:
+    - "status/need-confirm"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    state: "closed"
+    addLabels:
+    - "status/graduated"
+    removeLabels:
+    - "status/need-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    - "status/new"
+    successFeedback: "Thank you @assignees, This is a great moment!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-assign"
+spec:
+  rules:
+    instruct: "assign"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+  action:
+    addAssigneer:
+    - "@mention"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-unassign"
+spec:
+  rules:
+    instruct: "unassign"
+    permissions:
+    - "@maintainer"
+  action:
+    removeAssigner:
+    - "@mention"
+---
+apiVersion: "v1"
+kind: "Job"
+metadata:
+  name: "remind"
+spec:
+    in: 30
+    labels:
+    - "status/need-sync"
+    addLabels:
+    - "status/stale"
+---
+# 根据对象的属性进行操作和判断。
+#
+# comment 相关的一些特殊字符
+# @somebody @某人
+# @count 数量
+#
+# assign 相关的一些特殊字符
+# @remove_all 移除全部
+# @keep_all 保留全部
+# @remove_specific 移除指定的
+# @addition_specific 追加指定的这些
+
+# todo 重构，减少 API 调用时机，提前将 issue 相关数据组合，让代码逻辑清晰一些。
+# 优化逻辑，并发
+# 日志
+#      accept                synced
+# pending/need-sync(stale)/synced/description
+#                      waive
