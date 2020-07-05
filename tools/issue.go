@@ -52,6 +52,7 @@ func (i issueFunctions) GetAllMath() (issues map[string]*github.Issue, err error
 		}
 
 		for _, v := range is {
+			// TODO 关闭重复 issue
 			issues[v.GetTitle()] = v
 		}
 

@@ -63,12 +63,16 @@ type Repository struct {
 type IssueCreate struct {
 	Base
 	Spec struct {
-		Prefix    string    `yaml:"prefix"`
-		FileType  []string  `yaml:"fileType"`
-		Labels    []string  `yaml:"labels"`
-		Assignees []string  `yaml:"assignees"`
-		Milestone int       `yaml:"milestone"`
-		Includes  []Include `yaml:"includes"`
+		Prefix string `yaml:"prefix"`
+		// 默认为 false，即默认会在 title 里移除 prefix 的部分
+		SaveTitlePrefix bool     `yaml:"saveTitlePrefix"`
+		FileType        []string `yaml:"fileType"`
+		Labels          []string `yaml:"labels"`
+		Assignees       []string `yaml:"assignees"`
+		Milestone       int      `yaml:"milestone"`
+		// 分类依据，可选值为 directory、file，默认为 directory
+		GroupBy  string    `yaml:"groupBy"`
+		Includes []Include `yaml:"includes"`
 	} `yaml:"spec"`
 }
 
@@ -90,29 +94,45 @@ func (i IssueCreate) SupportType(file string) bool {
 }
 
 // 判断是否处理该文件
-func (i IssueCreate) SupportFile(include Include, filename string) bool {
+// 如果处理，则返回其匹配的相关信息
+func (i IssueCreate) SupportFile(filename string) (Include, bool) {
 	// 仅处理支持的文件格式
 	if !i.SupportType(filename) {
-		return false
+		return Include{}, false
 	}
 
-	// 不包含关键字
-	if !strings.Contains(filename, include.Path) {
-		return false
-	}
-
-	// 排除的子目录
-	for _, v := range include.Exclude {
-		if strings.Contains(filename, v.Path) {
-			return false
+	for _, include := range i.Spec.Includes {
+		// 包含关键字
+		if strings.Contains(filename, include.Path) {
+			// 如果不包含任一排除的子目录，则符合条件
+			if !i.hasExclude(filename, include.Exclude) {
+				return include, true
+			}
 		}
 	}
 
-	return true
+	// 无匹配 include
+	return Include{}, false
+}
+
+func (i IssueCreate) hasExclude(filename string, excludes []Include) bool {
+	for _, v := range excludes {
+		if strings.Contains(filename, v.Path) {
+			return true
+		}
+	}
+	return false
 }
 
 type Include struct {
-	Path    string    `yaml:"path"`
+	Path string `yaml:"path"`
+
+	// 对于这一类文件，将 title 强制重写为配置文件指定的内容
+	// 并且不显示 website 地址和 commit 历史界面
+	Title string `yaml:"title"`
+
+	// 分类依据，可选值为 directory、file，默认为 directory
+	GroupBy string    `yaml:"groupBy"`
 	Labels  []string  `yaml:"labels"`
 	Exclude []Include `yaml:"exclude"`
 }

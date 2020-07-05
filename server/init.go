@@ -52,7 +52,6 @@ func genAndCreateIssues(sha string) {
 		return
 	}
 
-	conf := *global.Conf
 	// 获取全部符合条件的 issue，避免重复创建
 	existIssues, err := tools.Issue.GetAllMath()
 	if err != nil {
@@ -68,26 +67,23 @@ func genAndCreateIssues(sha string) {
 
 	// 根据配置和已有 issue 判断是创建或更新
 	for file := range fs {
-		for _, v := range conf.IssueCreate.Spec.Includes {
-			// 符合条件的文件
-			if global.Conf.IssueCreate.SupportFile(v, file) {
-				// 根据 title 判断，如果已存在相关 issue，则更新
-				exist := existIssues[*tools.Generate.Title(file)]
-				if exist != nil {
-					updates[*exist.Number] = tools.Generate.UpdateIssue(false, file, *exist)
+		include, ok := global.Conf.IssueCreate.SupportFile(file)
+		// 符合条件的文件
+		if ok {
+			// 根据 title 判断，如果已存在相关 issue，则更新
+			exist := existIssues[*tools.Generate.Title(file, include)]
+			if exist != nil {
+				updates[*exist.Number] = tools.Generate.UpdateIssue(false, file, *exist)
+			} else {
+				// 不存在，则新建，新建也分两种情况
+				// 有多个新文件属于一个 issue
+				create := creates[*tools.Generate.Title(file, include)]
+				if create != nil {
+					creates[*tools.Generate.Title(file, include)] = tools.Generate.UpdateNewIssue(file, create)
 				} else {
-					// 不存在，则新建，新建也分两种情况
-					// 有多个新文件属于一个 issue
-					create := creates[*tools.Generate.Title(file)]
-					if create != nil {
-						creates[*tools.Generate.Title(file)] = tools.Generate.UpdateNewIssue(file, create)
-					} else {
-						// 是一个新的新 issue
-						creates[*tools.Generate.Title(file)] = tools.Generate.NewIssue(v, file)
-					}
+					// 是一个新的新 issue
+					creates[*tools.Generate.Title(file, include)] = tools.Generate.NewIssue(include, file)
 				}
-				// 文件已处理，break 内层循环
-				break
 			}
 		}
 	}

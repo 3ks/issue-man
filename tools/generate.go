@@ -12,21 +12,48 @@ import (
 )
 
 // parseTitleFromPath 解析路径，生成 title
-// 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md，预期 title 为： faq/setup
+// 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md
+// 如果配置文件指预期 title 为： faq/setup
 // 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
 // 不会出现返回 nil 的情况，最差情况下返回值为 ""
-func (g generateFunctions) Title(filePath string) *string {
-	title := ""
-	// TODO 1 以目录、文件为单位（配置化）进行划分
-	// TODO 2 抽取 _index？
-	if strings.ReplaceAll(path.Base(filePath), path.Ext(filePath), "") == "_index" {
-		title = "Architecture"
-		return &title
+func (g generateFunctions) Title(filename string, include config.Include) *string {
+	// 分类依据
+	const (
+		Directory = "directory"
+		File      = "file"
+	)
+
+	// 如果 include.Title 有值，则不计算 title，直接返回该值
+	if include.Title != "" {
+		return Get.String(include.Title)
 	}
-	filePath = strings.Replace(filePath, "content/en/", "", 1)
-	t := strings.Split(filePath, "/")
-	title = strings.Join(t[:len(t)-1], "/")
-	return &title
+
+	// 按照目录分类命名
+	genTitleByDirectory := func(filename string) *string {
+		if !global.Conf.IssueCreate.Spec.SaveTitlePrefix {
+			filename = strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix)
+		}
+		return Get.String(path.Dir(filename))
+	}
+
+	// 按文件分类命名
+	genTitleByFile := func(filename string) *string {
+		if !global.Conf.IssueCreate.Spec.SaveTitlePrefix {
+			filename = strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix)
+		}
+		return Get.String(filename)
+	}
+
+	switch {
+	case include.GroupBy == File:
+		return genTitleByFile(filename)
+	case include.GroupBy == Directory:
+		return genTitleByDirectory(filename)
+	case global.Conf.IssueCreate.Spec.GroupBy == File:
+		return genTitleByFile(filename)
+	default:
+		return genTitleByDirectory(filename)
+	}
 }
 
 // parseURLFormPath
@@ -138,10 +165,10 @@ func (g generateFunctions) BodyByPRNumberAndSha(number int, sha string) *string 
 }
 
 // 根据配置初始化一个新 issue 的内容
-func (g generateFunctions) NewIssue(include config.Include, file string) (new *github.IssueRequest) {
+func (g generateFunctions) NewIssue(include config.Include, filename string) (new *github.IssueRequest) {
 	new = &github.IssueRequest{}
-	new.Title = Generate.Title(file)
-	new.Body, _ = Generate.Body(false, file, "")
+	new.Title = Generate.Title(filename, include)
+	new.Body, _ = Generate.Body(false, filename, "")
 
 	new.Labels = Convert.SliceAdd(&include.Labels, global.Conf.IssueCreate.Spec.Labels...)
 	new.Assignees = Get.Strings(global.Conf.IssueCreate.Spec.Assignees)

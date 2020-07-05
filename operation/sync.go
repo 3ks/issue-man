@@ -131,22 +131,18 @@ func SyncIssues() {
 		go func(file comm.File) {
 			defer wg.Done()
 			// 1. 判断是否需要处理
-			for _, include := range global.Conf.IssueCreate.Spec.Includes {
-				// 符合条件的文件
-				if global.Conf.IssueCreate.SupportFile(include, file.CommitFile.GetFilename()) {
-					global.Sugar.Debugw("get match file",
-						"file name", file.CommitFile.GetFilename(),
-						"match include", include,
-					)
-					lock <- 1
-					file.Sync(
-						include,
-						existIssues[*tools.Generate.Title(file.CommitFile.GetFilename())],
-						existIssues[*tools.Generate.Title(file.CommitFile.GetPreviousFilename())],
-					)
-					// 文件已处理
-					return
-				}
+			include, ok := global.Conf.IssueCreate.SupportFile(file.CommitFile.GetFilename())
+			if ok {
+				global.Sugar.Debugw("get match file",
+					"file name", file.CommitFile.GetFilename(),
+					"match include", include,
+				)
+				lock <- 1
+				file.Sync(
+					include,
+					existIssues[*tools.Generate.Title(file.CommitFile.GetFilename(), include)],
+					existIssues[*tools.Generate.Title(file.CommitFile.GetPreviousFilename(), include)],
+				)
 			}
 		}(file)
 	}
