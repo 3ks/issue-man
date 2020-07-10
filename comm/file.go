@@ -90,7 +90,6 @@ func (f File) comment(issue *github.Issue) error {
 	if !f.commentVerify(issue) {
 		return nil
 	}
-	// TODO 模板
 	bf := bytes.Buffer{}
 	bf.WriteString(fmt.Sprintf("Pull Request: https://github.com/%s/%s/pull/%d",
 		global.Conf.Repository.Spec.Source.Owner,

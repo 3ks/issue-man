@@ -59,12 +59,13 @@ func (g generateFunctions) Title(filename string, include config.Include) *strin
 // parseURLFormPath
 // 根据 PATH 生成站点的  HTTPS URL
 func (g generateFunctions) URL(filePath string) (source, translate string) {
+	// TODO 不同项目 URL 命名规则不同
+
 	// 去除两端路径
 	url := strings.Split(strings.Replace(filePath, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
 	tmp := path.Join(url[:len(url)-1]...)
-
-	sourceSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Source.Site, "/"), "https://"), "http://")
-	translateSite := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(global.Conf.Repository.Spec.Translate.Site, "/"), "https://"), "http://")
+	sourceSite := strings.TrimPrefix(strings.TrimPrefix(global.Conf.Repository.Spec.Source.Site, "https://"), "http://")
+	translateSite := strings.TrimPrefix(strings.TrimPrefix(global.Conf.Repository.Spec.Translate.Site, "https://"), "http://")
 
 	return fmt.Sprintf("https://%s", path.Join(sourceSite, tmp)), fmt.Sprintf("https://%s", path.Join(translateSite, tmp))
 }
@@ -76,39 +77,20 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
 
 	// map 存储去重
-	files := make(map[string]string)
-	files[file] = file
-	lines := strings.Split(oldBody, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "content/en") { // TODO
-			// 去掉旧文件的 https://xxx.com 前缀，后面会重新生成
-			tmp := strings.Split(line, "content/en")
-			if len(tmp) != 2 {
-				continue
-			}
-			line = fmt.Sprintf("content/en%s", tmp[1])
-			files[line] = line
-		}
-	}
+	files := g.extractFilesFromBody(oldBody)
 	// 用于移除某个文件的情况
+	files[file] = true
 	if remove {
 		delete(files, file)
 	}
-
 	length = len(files)
-	fs := make([]string, len(files))
-	// map 转 slice 以便排序
-	count := 0
-	for k := range files {
-		fs[count] = k
-		count++
-	}
-	// 排序
-	sort.Slice(fs, func(i, j int) bool {
-		return fs[i] < fs[j]
-	})
 
+	fs := Convert.MapToString(files)
 	source, translate := g.URL(file)
+
+	// 如果 URL 数量大于 1，则不构造 URL 和 Commits History 内容
+
+	// 反之，则构造
 
 	// 构造 body
 	bf := bytes.Buffer{}
@@ -146,6 +128,23 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
 	}
 	t = bf.String()
+	return
+}
+
+// extractFilesFromBody 提取 body 内的文件列表
+// map 存储去重
+func (g generateFunctions) extractFilesFromBody(body string) (files map[string]bool) {
+	files = make(map[string]bool)
+	lines := strings.Split(body, "\n")
+	prefix := global.Conf.IssueCreate.Spec.Prefix
+	for _, line := range lines {
+		index := strings.Index(line, prefix)
+		if index > 0 {
+			// 去掉旧文件 prefix 及前面的内容（https://xxx.com/xxx/），后面会重新生成
+			line = line[index+len(prefix):]
+			files[line] = true
+		}
+	}
 	return
 }
 

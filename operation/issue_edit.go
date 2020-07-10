@@ -24,7 +24,7 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 	edit := &gg.IssueRequest{
 		Title:     &info.Title,
 		Body:      &info.Body,
-		Milestone: &info.Milestone, //TODO 0？
+		Milestone: &info.Milestone,
 		State:     tools.Get.String(IssueOpen),
 	}
 	if edit.GetMilestone() == 0 {
@@ -67,7 +67,6 @@ func issueEdit(info comm.Info, flow config.IssueComment) {
 }
 
 // 根据 flow 更新 info 中的 label
-// TODO invalid?
 func updateLabel(req *gg.IssueRequest, info comm.Info, flow config.IssueComment) {
 	req.Labels = tools.Convert.SliceAdd(tools.Convert.SliceRemove(tools.Get.Strings(info.Labels), flow.Spec.Action.RemoveLabels...), flow.Spec.Action.AddLabels...)
 }

@@ -228,7 +228,6 @@ spec:
 # @remove_specific 移除指定的
 # @addition_specific 追加指定的这些
 
-# todo 重构，减少 API 调用时机，提前将 issue 相关数据组合，让代码逻辑清晰一些。
 # 优化逻辑，并发
 # 日志
 #      accept                synced

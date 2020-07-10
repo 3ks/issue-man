@@ -59,7 +59,7 @@ func (c convertFunctions) Assignees(sourceUser []*github.User) *[]string {
 
 // SliceAdd
 // 由于 GitHub 对于多个重名 Label 可能会重复创建，
-// 所以应该用该函数对 Label 进行去重添加
+// 所以应该用该函数对 Label 进行去重添加，该方法还会忽略空 label
 func (c convertFunctions) SliceAdd(label *[]string, add ...string) *[]string {
 	if label == nil {
 		newSlice := make([]string, 0)
@@ -68,6 +68,11 @@ func (c convertFunctions) SliceAdd(label *[]string, add ...string) *[]string {
 	labelMap := c.StringToMap(*label)
 	for _, v := range add {
 		labelMap[v] = true
+	}
+	for k := range labelMap {
+		if k == "" {
+			delete(labelMap, k)
+		}
 	}
 
 	return c.MapToString(labelMap)

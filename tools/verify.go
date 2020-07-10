@@ -114,10 +114,11 @@ func (v verifyFunctions) LabelCount(login string, labels []string, limit int) bo
 	}
 
 	// 根据用户及 label 筛选
-	// TODO 默认只 GET 30 个 issue
+	// 注意：默认只会 GET 100 个 issue，大多数情况下，都是够用的
 	req := &gg.IssueListByRepoOptions{}
 	req.Assignee = login
 	req.Labels = labels
+	req.PerPage = 100
 
 	is, resp, err := global.Client.Issues.ListByRepo(
 		context.TODO(),
