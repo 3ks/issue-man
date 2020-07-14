@@ -47,7 +47,9 @@ func GetInfo(payload github.IssueCommentPayload) (info Info) {
 	info.IssueNumber = int(payload.Issue.Number)
 	info.Title = payload.Issue.Title
 	info.Body = payload.Issue.Body
-	info.Milestone = int(payload.Issue.Milestone.Number)
+	if payload.Issue.Milestone != nil {
+		info.Milestone = int(payload.Issue.Milestone.Number)
+	}
 	info.State = payload.Issue.State
 
 	info.Assignees = make([]string, len(payload.Issue.Assignees))
