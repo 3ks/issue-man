@@ -27,6 +27,10 @@ func IssueEdit(info Info, flow config.Flow) {
 		Milestone: &info.Milestone,
 	}
 
+	if info.Milestone == 0 {
+		req.Milestone = nil
+	}
+
 	closeIssue := IssueOpen
 	// 是否关闭 issue
 	if flow.Close {
