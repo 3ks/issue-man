@@ -26,7 +26,7 @@ func Destroy(conf config.Config) {
 	go func() {
 		// 将 API 频率限制为每秒 2 次
 		for range lock {
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 	for _, v := range issues {

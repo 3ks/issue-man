@@ -7,7 +7,6 @@ import (
 	"issue-man/config"
 	"issue-man/global"
 	"path"
-	"sort"
 	"strings"
 )
 
@@ -100,7 +99,7 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	} else {
 		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
 	}
-	for _, v := range fs {
+	for _, v := range *fs {
 		if v == "" {
 			continue
 		}
@@ -118,7 +117,7 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	} else {
 		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s\n\n#### Files\n\n", translate))
 	}
-	for _, v := range fs {
+	for _, v := range *fs {
 		if v == "" {
 			continue
 		}
