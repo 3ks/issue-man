@@ -11,7 +11,7 @@ spec:
   translate:
     owner: "cloudnativeto"
     repository: "kubebuilder"
-    site: ""
+    site: "cloudnative.to/kubebuilder"
   workspace:
     owner: "1kib"
     repository: "kb"

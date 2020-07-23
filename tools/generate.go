@@ -126,7 +126,7 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	} else {
 		bf.WriteString(fmt.Sprintf("## Translate\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
 			translate, strings.TrimSuffix(path.Base(file), path.Ext(file)),
-			fmt.Sprintf("https://github.com/%s/%s/commits/master/%s\n\n",
+			fmt.Sprintf("https://github.com/%s/%s/commits/zh/%s\n\n",
 				global.Conf.Repository.Spec.Translate.Owner,
 				global.Conf.Repository.Spec.Translate.Repository,
 				file,
@@ -137,7 +137,7 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/master/%s\n\n",
+		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/zh/%s\n\n",
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
 			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
