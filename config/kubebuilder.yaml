@@ -11,7 +11,7 @@ spec:
   translate:
     owner: "cloudnativeto"
     repository: "kubebuilder"
-    site: "todo"
+    site: ""
   workspace:
     owner: "1kib"
     repository: "kb"
@@ -44,8 +44,6 @@ spec:
   labels:
   - "kind/page"
   - "status/new"
-  assignees:
-  - "3ks"
   groupBy: "file"
 # milestone: 1
   includes:
@@ -149,6 +147,7 @@ spec:
     - "status/graduated"
     removeLabels:
     - "status/need-sync"
+    - "status/need-confirm"
     - "status/waiting-for-update"
     - "status/stale"
     - "status/new"

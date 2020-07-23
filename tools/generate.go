@@ -98,13 +98,21 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	if strings.Contains(file, "_index") {
 		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
+		// TODO 配置化
+		bf.WriteString(fmt.Sprintf("## Source\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
+			source, strings.TrimSuffix(path.Base(file), path.Ext(file)),
+			fmt.Sprintf("https://github.com/%s/%s/commits/master/%s\n\n",
+				global.Conf.Repository.Spec.Source.Owner,
+				global.Conf.Repository.Spec.Source.Repository,
+				file,
+			),
+		))
 	}
 	for _, v := range *fs {
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
+		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/master/%s\n\n",
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
 			v))
@@ -116,13 +124,20 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	if strings.Contains(file, "_index") {
 		bf.WriteString(fmt.Sprintf("## Translate\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## Translate\n\n#### URL\n\n%s\n\n#### Files\n\n", translate))
+		bf.WriteString(fmt.Sprintf("## Translate\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
+			translate, strings.TrimSuffix(path.Base(file), path.Ext(file)),
+			fmt.Sprintf("https://github.com/%s/%s/commits/master/%s\n\n",
+				global.Conf.Repository.Spec.Translate.Owner,
+				global.Conf.Repository.Spec.Translate.Repository,
+				file,
+			),
+		))
 	}
 	for _, v := range *fs {
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
+		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/master/%s\n\n",
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
 			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
