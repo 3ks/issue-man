@@ -1,0 +1,195 @@
+apiVersion: "v1"
+kind: "Repository"
+metadata:
+  name: "kuberbuilder.3ks.dev"
+spec:
+  source:
+    owner: "kubernetes-sigs"
+    repository: "kuberbuilder"
+    site: "book.kubebuilder.io/"
+    removePrefix: "docs/book/src"
+  translate:
+    owner: "cloudnativeto"
+    repository: "kubebuilder"
+    site: "todo"
+  workspace:
+    owner: "1kib"
+    repository: "kb"
+    maintainerTeam: "1mib"
+    detection:
+      at: "09:00"
+      prIssue: 1
+      needLabel:
+      - "status/waiting-for-update"
+      - "status/need-sync"
+      addLabel:
+      - "status/need-sync"
+      removeLabel:
+      - "status/pending"
+      deprecatedLabel:
+      - "status/need-confirm"
+  port: ":8080"
+  logLevel: "dev"
+  verbose: false
+---
+apiVersion: "v1"
+kind: "IssueCreate"
+metadata:
+  name: "issue-create"
+spec:
+  prefix: "docs/book/src"
+  fileType:
+    - "md"
+    - "html"
+  labels:
+  - "kind/page"
+  - "status/new"
+  assignees:
+  - "3ks"
+  groupBy: "file"
+# milestone: 1
+  includes:
+# 判断逻辑为包含，而不是前缀
+  - path: ""
+    labels:
+    - "status/pending"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-accept"
+spec:
+  rules:
+    instruct: "accept"
+    permissions:
+    - "@maintainer"
+    - "@member"
+    permissionFeedback: "@commenter，请先加入组织，再领取任务"
+    labels:
+    - "status/pending"
+    labelFeedback: "@commenter, 抱歉，只有 `status/pending` 状态的 issue 才能执行该指令。"
+  action:
+    addLabels:
+    - "status/need-sync"
+    addLabelsLimit: 0
+    labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
+    removeLabels:
+    - "status/pending"
+    - "status/new"
+    addAssignees:
+    - "@commenter"
+    successFeedback: "Thanks @commenter，这个 issue 是你的了！"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-sync"
+spec:
+  rules:
+    instruct: "synced"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+    permissionFeedback: "@commenter，你没有权限执行该指令"
+    labels:
+    - "status/need-sync"
+    labelFeedback: "@commenter，抱歉，只有 `status/need-sync` 状态的 issue 才能执行该指令。"
+  action:
+    addLabels:
+    - "status/waiting-for-update"
+    removeLabels:
+    - "status/need-sync"
+    - "status/stale"
+    - "status/new"
+    successFeedback: "Well done @commenter，当该页面有更新时，我们会通知您，你不需要经常的手动检查它。"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-wavier"
+spec:
+  rules:
+    instruct: "wavier"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+    labels:
+    - "kind/page"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    addLabels:
+    - "status/pending"
+    removeLabels:
+    - "status/need-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    - "status/new"
+    removeAssignees:
+    - "@all-assignees"
+    successFeedback: "Thank you @assignees, I'll see you again!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-grad"
+spec:
+  rules:
+    instruct: "grad"
+    permissions:
+    - "@maintainer"
+    labels:
+    - "status/need-confirm"
+    labelFeedback: "@commenter, the current status of this issue does not allow this instruction."
+  action:
+    state: "closed"
+    addLabels:
+    - "status/graduated"
+    removeLabels:
+    - "status/need-sync"
+    - "status/waiting-for-update"
+    - "status/stale"
+    - "status/new"
+    successFeedback: "Thank you @assignees, This is a great moment!"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-assign"
+spec:
+  rules:
+    instruct: "assign"
+    permissions:
+    - "@maintainer"
+    - "@assigner"
+  action:
+    addAssigneer:
+    - "@mention"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-unassign"
+spec:
+  rules:
+    instruct: "unassign"
+    permissions:
+    - "@maintainer"
+  action:
+    removeAssigner:
+    - "@mention"
+---
+apiVersion: "v1"
+kind: "Job"
+metadata:
+  name: "remind"
+spec:
+    in: 30
+    labels:
+    - "status/need-sync"
+    addLabels:
+    - "status/stale"
+---

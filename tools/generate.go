@@ -10,17 +10,18 @@ import (
 	"strings"
 )
 
+// 分类依据
+const (
+	Directory = "directory"
+	File      = "file"
+)
+
 // parseTitleFromPath 解析路径，生成 title
 // 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md
 // 如果配置文件指预期 title 为： faq/setup
 // 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
 // 不会出现返回 nil 的情况，最差情况下返回值为 ""
 func (g generateFunctions) Title(filename string, include config.Include) *string {
-	// 分类依据
-	const (
-		Directory = "directory"
-		File      = "file"
-	)
 
 	// 如果 include.Title 有值，则不计算 title，直接返回该值
 	if include.Title != "" {
@@ -59,7 +60,7 @@ func (g generateFunctions) Title(filename string, include config.Include) *strin
 // 根据 PATH 生成站点的  HTTPS URL
 func (g generateFunctions) URL(filePath string) (source, translate string) {
 	// TODO 不同项目 URL 命名规则不同
-
+	// TODO
 	// 去除两端路径
 	url := strings.Split(strings.Replace(filePath, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
 	tmp := path.Join(url[:len(url)-1]...)
