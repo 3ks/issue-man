@@ -61,9 +61,12 @@ func (f File) create(include config.Include) {
 func (f File) update(existIssue *github.Issue) (*github.Issue, error) {
 	// 更新
 	issue := tools.Generate.UpdateIssue(false, f.CommitFile.GetFilename(), *existIssue)
-	// 添加和移除一些 label
-	issue.Labels = tools.Convert.SliceAdd(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.AddLabel...)
-	issue.Labels = tools.Convert.SliceRemove(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.RemoveLabel...)
+	// 对于有 assigner 的 issue，添加和移除一些 label
+	// 反之，不改动 issue label
+	if len(existIssue.Assignees) > 0 {
+		issue.Labels = tools.Convert.SliceAdd(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.AddLabel...)
+		issue.Labels = tools.Convert.SliceRemove(issue.Labels, global.Conf.Repository.Spec.Workspace.Detection.RemoveLabel...)
+	}
 
 	updatedIssue, err := tools.Issue.EditByIssueRequest(existIssue.GetNumber(), issue)
 	if err != nil {
