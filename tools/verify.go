@@ -10,7 +10,7 @@ import (
 
 // HasLabel
 // 要求 require 的每一个元素都在 source 之中
-func (v verifyFunctions) HasLabel(source []string, require ...string) bool {
+func (v verifyFunctions) HasLabel(require, source []string) bool {
 	if len(require) == 0 {
 		return true
 	}
