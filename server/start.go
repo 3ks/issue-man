@@ -25,7 +25,7 @@ var (
 
 func Start(conf config.Config) {
 	// 定时检测任务
-	go operation.Sync()
+	//go operation.Sync()
 
 	lock = make(chan int, 1)
 	// 初始化处理的事件列表
@@ -39,7 +39,7 @@ func Start(conf config.Config) {
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/init", check, InitIssue)
-		v1.GET("/sync", check, Sync)
+		//v1.GET("/sync", check, Sync)
 		v1.GET("/load", check, Load)
 		v1.POST("/webhooks/", Webhooks)
 	}

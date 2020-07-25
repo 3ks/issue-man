@@ -26,10 +26,10 @@ func Init(conf config.Config) {
 	}()
 	// init 始终基于最新 pr 来完成，
 	// 所以这里直接更新 pr issue body
-	prIssue := tools.Issue.GetPRIssue()
+	//prIssue := tools.Issue.GetPRIssue()
 	latestPR := tools.PR.LatestMerged()
-	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
-	defer tools.Issue.Edit(prIssue)
+	//prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
+	//defer tools.Issue.Edit(prIssue)
 	genAndCreateIssues(latestPR.GetMergeCommitSHA())
 }
 
