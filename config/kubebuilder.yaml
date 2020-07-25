@@ -13,9 +13,9 @@ spec:
     repository: "kubebuilder"
     site: "cloudnative.to/kubebuilder"
   workspace:
-    owner: "1kib"
-    repository: "kb"
-    maintainerTeam: "1mib"
+    owner: "cloudnativeto"
+    repository: "kubebuilder"
+    maintainerTeam: "kubebuilder"
   port: ":8080"
   logLevel: "dev"
   verbose: false
