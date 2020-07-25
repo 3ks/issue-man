@@ -9,8 +9,8 @@ import (
 )
 
 // HasLabel
-// 要求 require 的每一个元素都在 source 之中
-func (v verifyFunctions) HasLabel(source []string, require ...string) bool {
+// 要求 require 的每一个元素都能在 source 中找到
+func (v verifyFunctions) HasLabel(require, source []string) bool {
 	if len(require) == 0 {
 		return true
 	}
@@ -18,13 +18,13 @@ func (v verifyFunctions) HasLabel(source []string, require ...string) bool {
 		return false
 	}
 
-	requireLabels := make(map[string]bool)
-	for _, value := range require {
-		requireLabels[value] = true
+	sourceLabels := make(map[string]bool)
+	for _, value := range source {
+		sourceLabels[value] = true
 	}
 
-	for _, value := range source {
-		if !requireLabels[value] {
+	for _, label := range require {
+		if !sourceLabels[label] {
 			return false
 		}
 	}

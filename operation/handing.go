@@ -64,7 +64,7 @@ func do(instruct string, mention []string, payload github.IssueCommentPayload) {
 	}
 
 	// 标签（状态）检查
-	if !tools.Verify.HasLabel(flow.Spec.Rules.Labels, info.Labels...) {
+	if !tools.Verify.HasLabel(flow.Spec.Rules.Labels, info.Labels) {
 		global.Sugar.Infow("do instruct",
 			"req_id", info.ReqID,
 			"step", "CheckLabel",
