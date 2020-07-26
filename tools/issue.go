@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"issue-man/global"
 	"net/http"
-	"strings"
 )
 
 // 获取所有符合配置文件要求的 issue
@@ -16,12 +15,9 @@ func (i issueFunctions) GetAllMath() (issues map[string]*github.Issue, err error
 	global.Sugar.Debugw("load workspace issues",
 		"step", "start")
 	opt := &github.IssueListByRepoOptions{}
-	// 仅根据 kind 类型的 label 筛选 issue
-	for _, v := range c.IssueCreate.Spec.Labels {
-		if strings.HasPrefix(v, "kind/") {
-			opt.Labels = append(opt.Labels, v)
-		}
-	}
+	opt.State = "open"
+	// 仅根据 kind/page 类型的 label 筛选 issue
+	opt.Labels = []string{"kind/page"}
 	// 每页 100 个 issue
 	opt.Page = 1
 	opt.PerPage = 100
