@@ -3,7 +3,6 @@ package tools
 import (
 	"issue-man/global"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -47,24 +46,40 @@ func (p parseFunctions) Instruct(body string) (instructs map[string][]string) {
 
 // 解析指令，不导出
 func (p parseFunctions) parseInstruct(s string) (is string, peoples []string) {
-	s += " "
-	strings.TrimLeft(s, " ")
-	//expName:=regexp.MustCompile("(?<=^/).*?(?= )")
-	//expPeople:=regexp.MustCompile("(?<=@).*?(?= )")
-	is = regexp.MustCompile("^/.*? ").FindString(s)
-	if is == "" {
-		return
-	}
-	is = strings.TrimPrefix(strings.TrimSpace(is), "/")
-
-	peoples = regexp.MustCompile("^@.*? ").FindAllString(s, -1)
-	if len(peoples) == 0 {
-		return
-	}
-	for k, v := range peoples {
-		peoples[k] = strings.TrimSpace(v)
+	peoples = make([]string, 0)
+	strings.Trim(s, " ")
+	data := strings.Split(s, " ")
+	for k, v := range data {
+		if k == 0 {
+			if strings.HasPrefix(v, "/") {
+				is = strings.TrimPrefix(v, "/")
+			} else {
+				return "", nil
+			}
+		}
+		if strings.HasPrefix(v, "@") {
+			peoples = append(peoples, strings.TrimPrefix(v, "@"))
+		}
 	}
 	return
+	//s += " "
+	//strings.TrimLeft(s, " ")
+	////expName:=regexp.MustCompile("(?<=^/).*?(?= )")
+	////expPeople:=regexp.MustCompile("(?<=@).*?(?= )")
+	//is = regexp.MustCompile("^/.*? ").FindString(s)
+	//if is == "" {
+	//	return
+	//}
+	//is = strings.TrimPrefix(strings.TrimSpace(is), "/")
+	//
+	//peoples = regexp.MustCompile("^@.*? ").FindAllString(s, -1)
+	//if len(peoples) == 0 {
+	//	return
+	//}
+	//for k, v := range peoples {
+	//	peoples[k] = strings.TrimSpace(v)
+	//}
+	//return
 }
 
 // PRNumberFromBody

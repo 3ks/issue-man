@@ -10,6 +10,7 @@ import (
 
 // HasLabel
 // 要求 require 的每一个元素都能在 source 中找到
+// 一般将配置文件置为 require，将 issue 当前的 label 置为 source
 func (v verifyFunctions) HasLabel(require, source []string) bool {
 	if len(require) == 0 {
 		return true

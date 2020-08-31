@@ -20,6 +20,7 @@ import (
 // 1. 包含 _index 开头的文件的目录，创建统一的 issue（但会继续遍历相关子目录），由 maintainer 统一管理。
 // 3. 以包含 .md 文件的目录为单位，创建 issue（即一个目录可能包含多个 .md 文件）
 func Init(conf config.Config) {
+	lock = make(chan int, 1)
 	lock <- 1
 	defer func() {
 		<-lock
