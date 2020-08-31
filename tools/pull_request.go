@@ -11,7 +11,7 @@ import (
 func (i pullRequestFunctions) LatestMerged() (latestPR *github.PullRequest) {
 	opt := &github.PullRequestListOptions{
 		State: "close",
-		Base:  "master",
+		Base:  global.Conf.Repository.Spec.Source.Branch,
 		ListOptions: github.ListOptions{
 			Page:    1,
 			PerPage: 30,

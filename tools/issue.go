@@ -9,11 +9,12 @@ import (
 	"net/http"
 )
 
-// 获取所有符合配置文件要求的 issue
+// 获取 workspace 下所有含有 kind/page 的 issue
 func (i issueFunctions) GetAllMath() (issues map[string]*github.Issue, err error) {
-	c := *global.Conf
 	global.Sugar.Debugw("load workspace issues",
 		"step", "start")
+	workspace := global.Conf.Repository.Spec.Workspace
+
 	opt := &github.IssueListByRepoOptions{}
 	opt.State = "open"
 	// 仅根据 kind/page 类型的 label 筛选 issue
@@ -27,8 +28,8 @@ func (i issueFunctions) GetAllMath() (issues map[string]*github.Issue, err error
 	for {
 		is, resp, err := global.Client.Issues.ListByRepo(
 			context.TODO(),
-			c.Repository.Spec.Workspace.Owner,
-			c.Repository.Spec.Workspace.Repository,
+			workspace.Owner,
+			workspace.Repository,
 			opt,
 		)
 		if err != nil {

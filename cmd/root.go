@@ -34,7 +34,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "issue-man",
 	Short: "issue 生命周期的机器人",
-	Long:  `issue-man 一个用于管理 Client Issue 生命周期的机器人。`,
+	Long:  `issue-man 一个用于管理 GitHub Issue 生命周期的机器人。`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Usage()
 	},

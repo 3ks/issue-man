@@ -1,5 +1,5 @@
-// comm.go 包含了各个子命令通用的一些遍历
-// 如：配置、日志等
+// comm.go 包含了各个子命令通用的一些变量
+// 如：全局锁、配置、GitHub 客户端、日志、Maintainer 列表、成员列表、指令列表等
 package global
 
 import (

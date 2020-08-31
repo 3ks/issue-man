@@ -25,13 +25,19 @@ func Init(conf config.Config) {
 	defer func() {
 		<-lock
 	}()
-	// init 始终基于最新 pr 来完成，
-	// 所以这里直接更新 pr issue body
-	prIssue := tools.Issue.GetPRIssue()
-	latestPR := tools.PR.LatestMerged()
-	prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
-	defer tools.Issue.Edit(prIssue)
-	genAndCreateIssues(latestPR.GetMergeCommitSHA())
+	// 默认情况下，基于配置的分支内容来创建 issue
+	sha := global.Conf.Repository.Spec.Source.Branch
+	// 在启用检测同步 issue时，则需要
+	// 获取最近一个 merged pr 的信息，并将其保存至 pr issue
+	if global.Conf.Repository.Spec.Workspace.Detection.Enable {
+		prIssue := tools.Issue.GetPRIssue()
+		latestPR := tools.PR.LatestMerged()
+		prIssue.Body = tools.Generate.BodyByPRNumberAndSha(latestPR.GetNumber(), latestPR.GetMergeCommitSHA())
+		defer tools.Issue.Edit(prIssue)
+		sha = latestPR.GetMergeCommitSHA()
+	}
+
+	genAndCreateIssues(sha)
 }
 
 // 根据配置、文件列表、已存在 issue，判断生成最终操作列表

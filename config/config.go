@@ -26,6 +26,7 @@ type Selector struct {
 	Repository   string `yaml:"repository"`
 	Site         string `yaml:"site"`
 	RemovePrefix string `yaml:"removePrefix"`
+	Branch       string `yaml:"branch"` // 分支
 }
 
 // 拼装 owner 和 repository
@@ -44,6 +45,7 @@ type Repository struct {
 			Repository     string `yaml:"repository"`
 			MaintainerTeam string `yaml:"maintainerTeam"`
 			Detection      struct {
+				Enable  bool   `yaml:"enable"` // 是否检测同步更新 issue
 				At      string `yaml:"at"`
 				PRIssue int    `yaml:"prIssue"`
 				// Comment Need Label

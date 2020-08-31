@@ -1,0 +1,169 @@
+apiVersion: "v1"
+kind: "Repository"
+metadata:
+  name: "envoy.3ks.dev"
+spec:
+  source:
+    owner: "envoyproxy"
+    repository: "envoyproxy.github.io"
+    site: "www.envoyproxy.io/docs/envoy/v1.15.0/"
+    removePrefix: "docs/envoy/latest"
+    branch: "master"
+  translate:
+    owner: "cloudnativeto"
+    repository: "envoy"
+    site: "cloudnative.to/envoy/docs/envoy/v1.15.0/"
+    branch: "zh"
+  workspace:
+    owner: "cloudnativeto"
+    repository: "envoy"
+    maintainerTeam: "envoy"
+  port: ":8080"
+  logLevel: "dev"
+  verbose: false
+---
+apiVersion: "v1"
+kind: "IssueCreate"
+metadata:
+  name: "issue-create"
+spec:
+  prefix: "docs/envoy/latest/_sources"
+  fileType:
+    - "txt"
+  labels:
+    - "kind/page"
+    - "status/new"
+  groupBy: "file"
+  includes:
+    # 判断逻辑为包含，而不是前缀
+    - path: "_sources/api"
+      labels:
+        - "kind/API"
+    - path: "_sources/configuration"
+      labels:
+        - "kind/Configuration"
+    - path: "_sources/extending"
+      labels:
+        - "kind/Extending"
+    - path: "_sources/faq"
+      labels:
+        - "kind/FAQ"
+    - path: "_sources/install"
+      labels:
+        - "kind/Install"
+    - path: "_sources/intro"
+      labels:
+        - "kind/Introduction"
+    - path: "_sources/operations"
+      labels:
+        - "kind/Operations"
+    - path: "_sources/start"
+      labels:
+        - "kind/Started"
+    - path: "_sources/version_history"
+      labels:
+        - "kind/Version"
+    - path: ""
+      labels:
+        - "kind/Index"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-accept"
+spec:
+  rules:
+    instruct: "accept"
+    permissions:
+      - "@maintainer"
+      - "@member"
+    permissionFeedback: "@commenter，请先加入组织，再领取任务"
+    labels:
+      - "status/pending"
+    labelFeedback: "@commenter, 抱歉，只有 `status/pending` 状态的 issue 才能执行该指令。"
+  action:
+    addLabels:
+      - "status/waiting-for-pr"
+    addLabelsLimit: 0
+    labelLimitFeedback: "Hi @commenter, we `DO NOT` recommend that you accept too many issues. If it is necessary, please contact maintainer to help you take it manually."
+    removeLabels:
+      - "status/pending"
+      - "status/new"
+    addAssignees:
+      - "@commenter"
+    successFeedback: "Thanks @commenter，这个 issue 是你的了！"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-pushed"
+spec:
+  rules:
+    instruct: "pushed"
+    permissions:
+      - "@maintainer"
+      - "@assigner"
+    permissionFeedback: "@commenter，你没有权限执行该指令"
+    labels:
+      - "status/waiting-for-pr"
+    labelFeedback: "@commenter，抱歉，只有 `status/waiting-for-pr` 状态的 issue 才能执行该指令。"
+  action:
+    addLabels:
+      - "status/reviewing"
+    removeLabels:
+      - "status/waiting-for-pr"
+      - "status/stale"
+      - "status/new"
+    successFeedback: "Well done @commenter，在 PR 被合并后，你可以执行指令 `/merged` 完成并关闭该任务。"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-merged"
+spec:
+  rules:
+    instruct: "merged"
+    permissions:
+      - "@maintainer"
+      - "@assigner"
+    labels:
+      - "status/reviewing"
+    labelFeedback: "@commenter，抱歉，只有 `status/reviewing` 状态的 issue 才能执行该指令。"
+  action:
+    addLabels:
+      - "status/finished"
+    removeLabels:
+      - "status/reviewing"
+    state: "closed"
+    successFeedback: "@assignees，感谢您的贡献！"
+    failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-assign"
+spec:
+  rules:
+    instruct: "assign"
+    permissions:
+      - "@maintainer"
+      - "@assigner"
+  action:
+    addAssignees:
+      - "@mention"
+---
+apiVersion: "v1"
+kind: "IssueComment"
+metadata:
+  name: "issue-unassign"
+spec:
+  rules:
+    instruct: "unassign"
+    permissions:
+      - "@maintainer"
+  action:
+    removeAssignees:
+      - "@mention"
+---

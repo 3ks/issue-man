@@ -73,6 +73,10 @@ func Sync() {
 
 // SyncIssues 同步检测 issue
 func SyncIssues() {
+	// 不检查同步 issue
+	if !global.Conf.Repository.Spec.Workspace.Detection.Enable {
+		return
+	}
 	// SyncIssues 可以通过多种方式触发
 	// 这里加一个锁，以避免重复检测提示的情况
 	lock.Lock()

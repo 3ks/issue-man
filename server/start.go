@@ -5,6 +5,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"issue-man/config"
@@ -13,6 +14,7 @@ import (
 	"issue-man/tools"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 )
@@ -203,10 +205,32 @@ func team(payload github.MembershipPayload) {
 // 条件是 source 的仓库中有 pull request 被 close 且 merge 为 true，则触发检测方法，
 // 检测是否有 issue 需要更新
 func pr(payload github.PullRequestPayload) {
-	// 只处理 source 仓库的 merged pr 事件
+	// 处理 source 仓库的 merged pr 事件
 	if payload.Repository.FullName == global.Conf.Repository.Spec.Source.GetFullName() {
+		// 行为是：有 pr 被合并时，更新 issue 列表
 		if payload.Action == "closed" && payload.PullRequest.Merged {
 			operation.SyncIssues()
 		}
+		return
+	}
+	// 处理 workspace 仓库的 merged pr 事件
+	if payload.Repository.FullName == fmt.Sprintf("%s/%s",
+		global.Conf.Repository.Spec.Workspace.Owner,
+		global.Conf.Repository.Spec.Workspace.Repository,
+	) {
+		// 行为是：有 pr 被合并时，提取第一行中的 issue number，将其视为关联的 issue，尝试自动关闭该 issue
+		if payload.Action == "closed" && payload.PullRequest.Merged {
+			// TODO: GET 获取 PR 的 title、body、assignees、labels，将相关信息填充至 github.IssueCommentPayload，模拟 /merged 指令，调用 operation.IssueHanding(payload, is)
+			number := path.Base(payload.PullRequest.Body)
+			tools.Issue.GetAllMath()
+			payload := github.IssueCommentPayload{}
+			is := make(map[string][]string)
+			is["/merged"] = nil
+			operation.IssueHanding(payload.Issue)
+		}
+
+		return
 	}
 }
+
+// TODO 区分 issue 和 pr 的 comment

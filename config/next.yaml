@@ -17,6 +17,7 @@ spec:
     repository: "new"
     maintainerTeam: "1mib"
     detection:
+      enable: true
       at: "09:00"
       prIssue: 1
       needLabel:

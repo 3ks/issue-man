@@ -1,3 +1,6 @@
+// sync.go 包含了两个函数
+// LoadMaintainers 从 GitHub 拉取 maintainer(某个 team) 成员列表
+// LoadMembers 从 GitHub 拉取组织成员列表
 package global
 
 import (

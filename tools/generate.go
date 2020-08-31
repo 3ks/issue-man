@@ -18,9 +18,7 @@ const (
 
 // parseTitleFromPath 解析路径，生成 title
 // 传入的路径总是这样的：content/en/faq/setup/k8s-migrating.md
-// 如果配置文件指预期 title 为： faq/setup
-// 对于文件名为：_index 开头的文件，预期 title 总是为： Architecture
-// 不会出现返回 nil 的情况，最差情况下返回值为 ""
+// 如果 include.Title != "" 则直接返回 include.Title 的值
 func (g generateFunctions) Title(filename string, include config.Include) *string {
 
 	// 如果 include.Title 有值，则不计算 title，直接返回该值
@@ -30,16 +28,18 @@ func (g generateFunctions) Title(filename string, include config.Include) *strin
 
 	// 按照目录分类命名
 	genTitleByDirectory := func(filename string) *string {
-		if !global.Conf.IssueCreate.Spec.SaveTitlePrefix {
-			filename = strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix)
+		// 不去除前缀
+		if global.Conf.IssueCreate.Spec.SaveTitlePrefix {
+			return Get.String(path.Dir(filename))
 		}
-		return Get.String(path.Dir(filename))
+		return Get.String(path.Dir(strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix)))
 	}
 
 	// 按文件分类命名
 	genTitleByFile := func(filename string) *string {
-		if !global.Conf.IssueCreate.Spec.SaveTitlePrefix {
-			filename = strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix)
+		// 不去除前缀
+		if global.Conf.IssueCreate.Spec.SaveTitlePrefix {
+			Get.String(strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix))
 		}
 		return Get.String(filename)
 	}
@@ -140,6 +140,9 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 }
 
 // extractFilesFromBody 提取 body 内的文件列表
+// 要求每个文件一行，并且
+// 包含 global.Conf.IssueCreate.Spec.Prefix 关键字
+// 提取的内容为 Prefix 之后的内容
 // map 存储去重
 func (g generateFunctions) extractFilesFromBody(body string) (files map[string]bool) {
 	files = make(map[string]bool)

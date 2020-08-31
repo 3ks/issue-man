@@ -12,8 +12,8 @@ func init() {
 	// destroy
 	info = &cobra.Command{
 		Use:   "info",
-		Short: "清空仓库内容。",
-		Long:  `根据规则，清空任务仓库的内容。`,
+		Short: "DryRun，用于打印配置文件等。",
+		Long:  `DryRun，用于打印配置文件等。`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// 初始化配置初始化服务相关的东西
 			_ = loadAndInit()
