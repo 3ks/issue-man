@@ -49,6 +49,9 @@ func Init(conf config.Config) {
 // 3. 更新 issue（如果文件有变化），assignees 如果不为空，则不修改，如果为空则判断配置是否有配置 assignees，如都为空则不操作。
 // 4. 创建 issue
 func genAndCreateIssues(sha string) {
+	// 创建 label
+	genLabels()
+
 	// 获取全部需要处理的文件
 	fs, err := tools.Tree.GetAllMatchFile(sha)
 	if err != nil {
@@ -143,4 +146,32 @@ func genAndCreateIssues(sha string) {
 		"update", len(updates),
 		"update fail", updateFail,
 	)
+}
+
+// 读取配置文件和 workspace 当前拥有的 label，创建缺少的 label
+func genLabels() {
+	if len(global.Conf.Repository.Spec.Workspace.Labels) == 0 {
+		return
+	}
+
+	// 获取目前已有的 labels
+	existLabels, err := tools.Label.GetAllLabels()
+	if err != nil {
+		global.Sugar.Errorw("get all labels",
+			"status", "fail",
+			"err", err.Error(),
+		)
+	}
+	existLabelsMap := make(map[string]bool)
+	for _, v := range existLabels {
+		existLabelsMap[*v.Name] = true
+	}
+
+	// 遍历需要的 label
+	for _, v := range global.Conf.Repository.Spec.Workspace.Labels {
+		// 不存在，则创建该 label
+		if !existLabelsMap[v.Name] {
+			_ = tools.Label.CreateLabels(v.Name, v.Description)
+		}
+	}
 }

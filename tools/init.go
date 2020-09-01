@@ -14,6 +14,7 @@ var (
 	Issue    issueFunctions
 	PR       pullRequestFunctions
 	Tree     treeFunctions
+	Label    labelFunctions
 )
 
 type (
@@ -44,4 +45,7 @@ type (
 	// 封装了 git tree 相关的方法
 	// 主要是初始化时获取 tree，得到所有文件列表
 	treeFunctions byte
+	// 封装了仓库 label 相关的方法
+	// 主要是初始化时获取和创建 label
+	labelFunctions byte
 )

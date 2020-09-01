@@ -54,6 +54,10 @@ type Repository struct {
 				RemoveLabel     []string `yaml:"removeLabel"`
 				DeprecatedLabel []string `yaml:"deprecatedLabel"`
 			} `yaml:"detection"`
+			Labels []struct {
+				Name        string `yaml:"name"`
+				Description string `yaml:"description"`
+			} `yaml:"labels"` // 初始化时，自动创建的 label
 		} `yaml:"workspace"` // 工作库
 		Port     string `yaml:"port"`
 		LogLevel string `yaml:"logLevel"`

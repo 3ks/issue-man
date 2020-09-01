@@ -18,6 +18,41 @@ spec:
     owner: "cloudnativeto"
     repository: "envoy"
     maintainerTeam: "envoy"
+    labels:
+    - name: "status/new"
+      description: "新创建的任务"
+    - name: "status/pending"
+      description: "可以被领取的任务"
+    - name: "status/waiting-for-pr"
+      description: "任务已被领取，等待提交 PR"
+    - name: "status/reviewing"
+      description: "任务已被领取，相关 PR 正在 review 中"
+    - name: "status/stale"
+      description: "任务长时间没有更新"
+    - name: "status/finished"
+      description: "任务已经完成"
+    - name: "kind/page"
+      description: "类型：页面"
+    - name: "chapter/API"
+      description: "API 章节"
+    - name: "chapter/Configuration"
+      description: "Configuration reference 章节"
+    - name: "chapter/Extending"
+      description: "Extending Envoy for custom use cases 章节"
+    - name: "chapter/FAQ"
+      description: "FAQ 章节"
+    - name: "chapter/Install"
+      description: "Building and installation 章节"
+    - name: "chapter/Introduction"
+      description: "Introduction 章节"
+    - name: "chapter/Operations"
+      description: "Operations and administration 章节"
+    - name: "chapter/Started"
+      description: "Getting Started 章节"
+    - name: "chapter/Version"
+      description: "Version history 章节"
+    - name: "chapter/Index"
+      description: "About the documentation 章节"
   port: ":8080"
   logLevel: "dev"
   verbose: false
@@ -33,39 +68,40 @@ spec:
   labels:
     - "kind/page"
     - "status/new"
+    - "status/pending"
   groupBy: "file"
   includes:
     # 判断逻辑为包含，而不是前缀
     - path: "_sources/api"
       labels:
-        - "kind/API"
+        - "chapter/API"
     - path: "_sources/configuration"
       labels:
-        - "kind/Configuration"
+        - "chapter/Configuration"
     - path: "_sources/extending"
       labels:
-        - "kind/Extending"
+        - "chapter/Extending"
     - path: "_sources/faq"
       labels:
-        - "kind/FAQ"
+        - "chapter/FAQ"
     - path: "_sources/install"
       labels:
-        - "kind/Install"
+        - "chapter/Install"
     - path: "_sources/intro"
       labels:
-        - "kind/Introduction"
+        - "chapter/Introduction"
     - path: "_sources/operations"
       labels:
-        - "kind/Operations"
+        - "chapter/Operations"
     - path: "_sources/start"
       labels:
-        - "kind/Started"
+        - "chapter/Started"
     - path: "_sources/version_history"
       labels:
-        - "kind/Version"
+        - "chapter/Version"
     - path: ""
       labels:
-        - "kind/Index"
+        - "chapter/Index"
 ---
 apiVersion: "v1"
 kind: "IssueComment"
