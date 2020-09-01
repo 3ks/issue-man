@@ -30,7 +30,6 @@ func Test_genBody(t *testing.T) {
 		},
 	}
 	global.Conf = &config.Config{}
-	global.Conf.Repository.Spec.Source.RemovePrefix = "content/en"
 	global.Conf.Repository.Spec.Source.Site = "istio.io/latest"
 	global.Conf.Repository.Spec.Translate.Site = "istio.io/latest/zh"
 	global.Conf.Repository.Spec.Source.Owner = "istio"
@@ -40,7 +39,7 @@ func Test_genBody(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBody, gotLength := genBody(tt.args.remove, tt.args.file, tt.args.oldBody)
+			gotBody, gotLength := Generate.Body(tt.args.remove, tt.args.file, tt.args.oldBody)
 			t.Logf("body: %s\n\nlength:%d\n", *gotBody, gotLength)
 			//if !reflect.DeepEqual(gotBody, tt.wantBody) {
 			//	t.Errorf("genBody() gotBody = %v, want %v", gotBody, tt.wantBody)

@@ -63,7 +63,7 @@ func (g generateFunctions) URL(filePath string) (source, translate string) {
 	// TODO
 	// 去除两端路径
 	// 根据 RemovePrefix 去除前缀
-	url := strings.Split(strings.Replace(filePath, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
+	url := strings.Split(strings.Replace(filePath, global.Conf.IssueCreate.Spec.Prefix, "", 1), "/")
 	// 去掉最后一段
 	tmp := path.Join(url[:len(url)-1]...)
 
@@ -108,9 +108,8 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 		}
 		// Source URL
 		url := fmt.Sprintf("[envoyproxy.io/docs](%s/%s)", sourceSiteURL, strings.TrimSuffix(path.Base(file), ".rst.txt"))
-
 		// Source FileCommitHistory
-		history := fmt.Sprintf("[envoyproxy/envoyproxy.github.io#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+		history := fmt.Sprintf("[envoyproxy/envoyproxy.github.io#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s)\n\n",
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
 			global.Conf.Repository.Spec.Source.Branch,
@@ -125,18 +124,13 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 			file)
 
 		// Source
-		bf.WriteString(fmt.Sprintf(`
-## Source\n\n
-URL：%s\n\n
-History：%s\n\n
-File：%s\n\n`,
-			url, history, filename))
+		bf.WriteString(fmt.Sprintf("## Source\n\nURL：%s\n\nHistory：%s\n\nFile：%s\n\n", url, history, filename))
 
 		// Translate URL
 		url = fmt.Sprintf("[cloudnative.to/envoy/docs](%s/%s)", translateSiteURL, strings.TrimSuffix(path.Base(file), ".rst.txt"))
 
 		// Translate FileCommitHistory
-		history = fmt.Sprintf("[cloudnative/envoy#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+		history = fmt.Sprintf("[cloudnative/envoy#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s)\n\n",
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
 			global.Conf.Repository.Spec.Translate.Branch,
@@ -151,12 +145,7 @@ File：%s\n\n`,
 			file)
 
 		// Translate
-		bf.WriteString(fmt.Sprintf(`
-## Translate\n\n
-URL：%s\n\n
-History：%s\n\n
-File：%s\n\n`,
-			url, history, filename))
+		bf.WriteString(fmt.Sprintf("## Translate\n\nURL：%s\n\nHistory：%s\n\nFile：%s\n\n", url, history, filename))
 		return Get.String(bf.String()), 1
 	}
 
@@ -191,11 +180,7 @@ File：%s\n\n`,
 		global.Conf.Repository.Spec.Source.Branch,
 		path.Dir(file), // 目录
 	)
-	bf.WriteString(fmt.Sprintf(`
-## Source\n\n
-URL：%s\n\n
-History：%s\n\n`,
-		url, history))
+	bf.WriteString(fmt.Sprintf("## Source\n\nURL：%s\n\nHistory：%s\n\n", url, history))
 
 	// Source FILES
 	bf.WriteString("Files：\n")
@@ -223,11 +208,7 @@ History：%s\n\n`,
 		global.Conf.Repository.Spec.Translate.Branch,
 		path.Dir(file), // 目录
 	)
-	bf.WriteString(fmt.Sprintf(`\n
-## Translate\n\n
-URL：%s\n\n
-History：%s\n\n`,
-		url, history))
+	bf.WriteString(fmt.Sprintf("\n## Translate\n\nURL：%s\n\nHistory：%s\n\n", url, history))
 
 	// Translate FILES
 	bf.WriteString("Files：\n")

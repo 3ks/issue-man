@@ -7,7 +7,6 @@ spec:
     owner: "envoyproxy"
     repository: "envoyproxy.github.io"
     site: "www.envoyproxy.io/docs/envoy/latest/"
-    removePrefix: "docs/envoy/latest/_resource"
     branch: "master"
   translate:
     owner: "cloudnativeto"

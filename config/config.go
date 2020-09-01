@@ -22,11 +22,10 @@ type Base struct {
 }
 
 type Selector struct {
-	Owner        string `yaml:"owner"`
-	Repository   string `yaml:"repository"`
-	Site         string `yaml:"site"`
-	RemovePrefix string `yaml:"removePrefix"`
-	Branch       string `yaml:"branch"` // 分支
+	Owner      string `yaml:"owner"`
+	Repository string `yaml:"repository"`
+	Site       string `yaml:"site"`
+	Branch     string `yaml:"branch"` // 分支
 }
 
 // 拼装 owner 和 repository
