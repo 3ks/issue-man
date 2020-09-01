@@ -155,7 +155,7 @@ spec:
       - "status/waiting-for-pr"
       - "status/stale"
       - "status/new"
-    successFeedback: "Well done @commenter，在 PR 被合并后，你也可以执行指令 `/merged` 完成并关闭该任务。对于符合规范的 PR，机器人也可以自动完成动作。"
+    successFeedback: "Well done @commenter，在 PR 被合并后，你也可以执行指令 `/merged` 完成并关闭该任务。对于符合规范的 PR，机器人也可以自动该完成动作。"
     failFeedback: "ooops, there are some accidents here, please provide `@req-id` to maintainer to help solve the problem."
 ---
 apiVersion: "v1"
