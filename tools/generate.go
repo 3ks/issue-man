@@ -39,9 +39,9 @@ func (g generateFunctions) Title(filename string, include config.Include) *strin
 	genTitleByFile := func(filename string) *string {
 		// 不去除前缀
 		if global.Conf.IssueCreate.Spec.SaveTitlePrefix {
-			Get.String(strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix))
+			Get.String(filename)
 		}
-		return Get.String(filename)
+		return Get.String(strings.TrimPrefix(filename, global.Conf.IssueCreate.Spec.Prefix))
 	}
 
 	switch {
@@ -62,8 +62,12 @@ func (g generateFunctions) URL(filePath string) (source, translate string) {
 	// TODO 不同项目 URL 命名规则不同
 	// TODO
 	// 去除两端路径
+	// 根据 RemovePrefix 去除前缀
 	url := strings.Split(strings.Replace(filePath, global.Conf.Repository.Spec.Source.RemovePrefix, "", 1), "/")
+	// 去掉最后一段
 	tmp := path.Join(url[:len(url)-1]...)
+
+	// 去掉 Site 中的 https:// 和 http:// 字符
 	sourceSite := strings.TrimPrefix(strings.TrimPrefix(global.Conf.Repository.Spec.Source.Site, "https://"), "http://")
 	translateSite := strings.TrimPrefix(strings.TrimPrefix(global.Conf.Repository.Spec.Translate.Site, "https://"), "http://")
 
@@ -71,12 +75,101 @@ func (g generateFunctions) URL(filePath string) (source, translate string) {
 }
 
 // genBody 根据文件名和旧的 body，生成新的 body
-// TODO 模板
+// 按文件
+// URL：site+removeSuffix(removePrefix(file))（根据配置文件决定是否移除）
+// HISTORY：owner+repository+commit+file
+// FILE：owner+repository+tree+file
+//
+// 按目录
+// URL：site+removeSuffix(removePrefix(file))（根据配置文件决定是否移除）
+// HISTORY：owner+repository+commit+dir(file)
+// FILES：
+// - owner+repository+tree+file
+// - owner+repository+tree+file
+// - owner+repository+tree+file
 func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string, length int) {
-	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
+	// 构造 body
+	bf := bytes.Buffer{}
 
+	// Requirement 必要信息
+	require := fmt.Sprintf("### Requirement\n\n翻译人员信息登录：%s\n\n翻译指南：%s\n\n",
+		"https://baidu.com",
+		"https://baidu.com",
+	)
+	bf.WriteString(require)
+
+	// 网页 URL，此时的 URL 可能不完整，可能需要拼接文件名（一般会需要除非后缀，比如 .md 等），也可能不需要拼接文件名（比如按目录划分 URL）
+	sourceSiteURL, translateSiteURL := g.URL(file)
+
+	// 按文件分隔，此时直接构造 body
+	if global.Conf.IssueCreate.Spec.GroupBy == File {
+		if remove {
+			return nil, 0
+		}
+		// Source URL
+		url := fmt.Sprintf("[envoyproxy.io/docs](%s/%s)", sourceSiteURL, strings.TrimSuffix(path.Base(file), ".rst.txt"))
+
+		// Source FileCommitHistory
+		history := fmt.Sprintf("[envoyproxy/envoyproxy.github.io#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+			global.Conf.Repository.Spec.Source.Owner,
+			global.Conf.Repository.Spec.Source.Repository,
+			global.Conf.Repository.Spec.Source.Branch,
+			file,
+		)
+		// Source FILE
+		filename := fmt.Sprintf("[%s](https://github.com/%s/%s/tree/%s/%s)\n\n",
+			file,
+			global.Conf.Repository.Spec.Source.Owner,
+			global.Conf.Repository.Spec.Source.Repository,
+			global.Conf.Repository.Spec.Source.Branch,
+			file)
+
+		// Source
+		bf.WriteString(fmt.Sprintf(`
+## Source\n\n
+URL：%s\n\n
+History：%s\n\n
+File：%s\n\n`,
+			url, history, filename))
+
+		// Translate URL
+		url = fmt.Sprintf("[cloudnative.to/envoy/docs](%s/%s)", translateSiteURL, strings.TrimSuffix(path.Base(file), ".rst.txt"))
+
+		// Translate FileCommitHistory
+		history = fmt.Sprintf("[cloudnative/envoy#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+			global.Conf.Repository.Spec.Translate.Owner,
+			global.Conf.Repository.Spec.Translate.Repository,
+			global.Conf.Repository.Spec.Translate.Branch,
+			file,
+		)
+		// Translate FILE
+		filename = fmt.Sprintf("[%s](https://github.com/%s/%s/tree/%s/%s)\n\n",
+			file,
+			global.Conf.Repository.Spec.Translate.Owner,
+			global.Conf.Repository.Spec.Translate.Repository,
+			global.Conf.Repository.Spec.Translate.Branch,
+			file)
+
+		// Translate
+		bf.WriteString(fmt.Sprintf(`
+## Translate\n\n
+URL：%s\n\n
+History：%s\n\n
+File：%s\n\n`,
+			url, history, filename))
+		return Get.String(bf.String()), 1
+	}
+
+	// 按目录
+	// URL：site+removeSuffix(removePrefix(file))（根据配置文件决定是否移除）
+	// HISTORY：owner+repository+commit+dir(file)
+	// FILES：
+	// - owner+repository+tree+file
+	// - owner+repository+tree+file
+	// - owner+repository+tree+file
+	// 否则按目录分割，此时需要提取 oldBody 的文件列表，并更新
 	// map 存储去重
-	files := g.extractFilesFromBody(oldBody)
+	files := g.extractFilesFromBody(strings.ReplaceAll(oldBody, "\r\n", "\n"))
 	// 用于移除某个文件的情况
 	files[file] = true
 	if remove {
@@ -84,76 +177,74 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	}
 	length = len(files)
 
-	fs := Convert.MapToString(files)
-	source, translate := g.URL(file)
+	// 文件列表
+	fileSlice := Convert.MapToString(files)
 
-	// 如果 URL 数量大于 1，则不构造 URL 和 Commits History 内容
-	// 反之，则构造
+	// Source
+	// Source URL，按目录分的 resp，其网页一般不带文件名
+	url := fmt.Sprintf("[envoyproxy.io/docs](%s)", sourceSiteURL)
 
-	// 构造 body
-	bf := bytes.Buffer{}
+	// Source FileCommitHistory
+	history := fmt.Sprintf("[envoyproxy/envoyproxy.github.io#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+		global.Conf.Repository.Spec.Source.Owner,
+		global.Conf.Repository.Spec.Source.Repository,
+		global.Conf.Repository.Spec.Source.Branch,
+		path.Dir(file), // 目录
+	)
+	bf.WriteString(fmt.Sprintf(`
+## Source\n\n
+URL：%s\n\n
+History：%s\n\n`,
+		url, history))
 
-	// Requirement
-	bf.WriteString(fmt.Sprintf("### Requirement\n\n翻译人员信息登录：%s\n\n翻译指南：%s\n\n",
-		"https://baidu.com",
-		"https://baidu.com",
-	))
-
-	// _index 类文件无统一页面
-	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
-	} else {
-		bf.WriteString(fmt.Sprintf("## Source\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
-			source, strings.TrimSuffix(path.Base(file), path.Ext(file)),
-			fmt.Sprintf("https://github.com/%s/%s/commits/%s/%s\n\n",
-				global.Conf.Repository.Spec.Source.Owner,
-				global.Conf.Repository.Spec.Source.Repository,
-				global.Conf.Repository.Spec.Source.Branch,
-				file,
-			),
-		))
-	}
-	for _, v := range *fs {
+	// Source FILES
+	bf.WriteString("Files：\n")
+	for _, v := range *fileSlice {
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s\n\n",
+		// File URL in GitHub
+		bf.WriteString(fmt.Sprintf("- [%s](https://github.com/%s/%s/tree/%s/%s)\n",
+			v,
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
 			global.Conf.Repository.Spec.Source.Branch,
 			v))
 	}
 
-	bf.WriteString("\n")
+	// Translate
+	// Translate URL，按目录分的 resp，其网页一般不带文件名
+	url = fmt.Sprintf("[cloudnative.to/envoy/docs](%s)", sourceSiteURL)
 
-	// _index 类文件无统一页面
-	if strings.Contains(file, "_index") {
-		bf.WriteString(fmt.Sprintf("## Translate\n\n#### Files\n\n"))
-	} else {
-		bf.WriteString(fmt.Sprintf("## Translate\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
-			translate,
-			strings.TrimSuffix(path.Base(file), path.Ext(file)),
-			fmt.Sprintf("https://github.com/%s/%s/commits/%s/%s\n\n",
-				global.Conf.Repository.Spec.Translate.Owner,
-				global.Conf.Repository.Spec.Translate.Repository,
-				global.Conf.Repository.Spec.Translate.Branch,
-				file,
-			),
-		))
-	}
-	for _, v := range *fs {
+	// Translate FileCommitHistory
+	history = fmt.Sprintf("[cloudnative/envoy#FileCommitHistory](https://github.com/%s/%s/commits/%s/%s\n\n)",
+		global.Conf.Repository.Spec.Translate.Owner,
+		global.Conf.Repository.Spec.Translate.Repository,
+		global.Conf.Repository.Spec.Translate.Branch,
+		path.Dir(file), // 目录
+	)
+	bf.WriteString(fmt.Sprintf(`\n
+## Translate\n\n
+URL：%s\n\n
+History：%s\n\n`,
+		url, history))
+
+	// Translate FILES
+	bf.WriteString("Files：\n")
+	for _, v := range *fileSlice {
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s\n\n",
+		// Translate File URL in GitHub
+		bf.WriteString(fmt.Sprintf("- [%s](https://github.com/%s/%s/tree/%s/%s)\n",
+			v,
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
 			global.Conf.Repository.Spec.Translate.Branch,
-			//strings.ReplaceAll(v, "content/en", "content/zh"),
-			v,
-		)) // TODO
+			v))
 	}
-	return Get.String(bf.String()), len(*fs)
+
+	return Get.String(bf.String()), len(*fileSlice)
 }
 
 // extractFilesFromBody 提取 body 内的文件列表
