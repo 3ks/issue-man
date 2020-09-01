@@ -203,3 +203,34 @@ func (i issueFunctions) Comment(number int, body string) {
 		return
 	}
 }
+
+// Get
+// 根据 number 获取一个 issue
+func (i issueFunctions) Get(number int) (*github.Issue, error) {
+	issue, resp, err := global.Client.Issues.Get(
+		context.TODO(),
+		global.Conf.Repository.Spec.Workspace.Owner,
+		global.Conf.Repository.Spec.Workspace.Repository,
+		number)
+	if err != nil {
+		fmt.Printf("get_issue_fail err: %v\n", err.Error())
+		global.Sugar.Errorw("issue get",
+			"step", "call api",
+			"status", "fail",
+			"number", number,
+			"err", err.Error())
+		return nil, err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		global.Sugar.Errorw("issue get",
+			"step", "check response",
+			"number", number,
+			"status code", resp.StatusCode,
+			"body", string(body))
+		return nil, fmt.Errorf("get issue fail. status code:%d\n", resp.StatusCode)
+	}
+	return issue, nil
+}

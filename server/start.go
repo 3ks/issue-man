@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -123,6 +124,7 @@ func Webhooks(c *gin.Context) {
 	hook, _ := github.New()
 	// 解析的事件列表
 	p, err := hook.Parse(c.Request,
+		github.IssuesEvent,
 		github.IssueCommentEvent,
 		github.MembershipEvent,
 		github.OrganizationEvent,
@@ -143,6 +145,7 @@ func Webhooks(c *gin.Context) {
 	case github.PullRequestPayload:
 		pr(p.(github.PullRequestPayload))
 	default:
+		global.Sugar.Debugw("unknown payload", "data", p)
 	}
 
 	c.JSON(http.StatusOK, nil)
@@ -161,6 +164,18 @@ func issueComment(payload github.IssueCommentPayload) {
 		return
 	}
 
+	const (
+		TypeIssue = "issues"
+		TypePR    = "pull"
+	)
+
+	// 仅处理 issue 的 comment，不处理 pr 的 comment
+	// TODO 将逻辑放到 operation 中，根据指令的配置决定是否处理？
+	if getCommentType(payload.Issue.URL) != TypeIssue {
+		return
+	}
+
+	global.Sugar.Debugw("issue comment payload", "data", payload)
 	is := tools.Parse.Instruct(payload.Comment.Body)
 	// 未能解析出任何指令
 	if len(is) == 0 {
@@ -169,6 +184,18 @@ func issueComment(payload github.IssueCommentPayload) {
 
 	// 执行指令
 	operation.IssueHanding(payload, is)
+}
+
+// 根据 URL 判断 comment 的类型
+// 数据示例：
+// https://api.github.com/repos/1kib/new/issues/1380
+// https://api.github.com/repos/1kib/new/pull/1381
+func getCommentType(url string) string {
+	tmp := strings.Split(url, "/")
+	if len(tmp) < 2 {
+		return ""
+	}
+	return tmp[len(tmp)-2]
 }
 
 // org
@@ -207,30 +234,30 @@ func team(payload github.MembershipPayload) {
 func pr(payload github.PullRequestPayload) {
 	// 处理 source 仓库的 merged pr 事件
 	if payload.Repository.FullName == global.Conf.Repository.Spec.Source.GetFullName() {
+		global.Sugar.Debugw("source pr payload", "data", payload)
 		// 行为是：有 pr 被合并时，更新 issue 列表
 		if payload.Action == "closed" && payload.PullRequest.Merged {
 			operation.SyncIssues()
 		}
 		return
 	}
+
 	// 处理 workspace 仓库的 merged pr 事件
-	if payload.Repository.FullName == fmt.Sprintf("%s/%s",
-		global.Conf.Repository.Spec.Workspace.Owner,
-		global.Conf.Repository.Spec.Workspace.Repository,
-	) {
-		// 行为是：有 pr 被合并时，提取第一行中的 issue number，将其视为关联的 issue，尝试自动关闭该 issue
+	workspaceFullName := fmt.Sprintf("%s/%s", global.Conf.Repository.Spec.Workspace.Owner, global.Conf.Repository.Spec.Workspace.Repository)
+	if payload.Repository.FullName == workspaceFullName {
+		global.Sugar.Debugw("workspace pr payload", "data", payload)
+		// 行为是：有 pr 被合并时，尝试提取第一行中的 issue number，将其视为关联的 issue，自动关闭该 issue
 		if payload.Action == "closed" && payload.PullRequest.Merged {
-			// TODO: GET 获取 PR 的 title、body、assignees、labels，将相关信息填充至 github.IssueCommentPayload，模拟 /merged 指令，调用 operation.IssueHanding(payload, is)
-			number := path.Base(payload.PullRequest.Body)
-			tools.Issue.GetAllMath()
-			payload := github.IssueCommentPayload{}
-			is := make(map[string][]string)
-			is["/merged"] = nil
-			operation.IssueHanding(payload.Issue)
+			// 提取 issue number
+			body := strings.ReplaceAll(payload.PullRequest.Body, "\r\n", "\n")
+			number, err := strconv.Atoi(path.Base(strings.Split(body, "\n")[0]))
+			if err != nil {
+				global.Sugar.Errorw("can not convert number", "body", payload.PullRequest.Body)
+				return
+			}
+			tools.Issue.Comment(number, "/merged")
 		}
 
 		return
 	}
 }
-
-// TODO 区分 issue 和 pr 的 comment

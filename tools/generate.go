@@ -71,9 +71,8 @@ func (g generateFunctions) URL(filePath string) (source, translate string) {
 }
 
 // genBody 根据文件名和旧的 body，生成新的 body
+// TODO 模板
 func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string, length int) {
-	t := ""
-	body = &t
 	oldBody = strings.ReplaceAll(oldBody, "\r\n", "\n")
 
 	// map 存储去重
@@ -89,24 +88,39 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 	source, translate := g.URL(file)
 
 	// 如果 URL 数量大于 1，则不构造 URL 和 Commits History 内容
-
 	// 反之，则构造
 
 	// 构造 body
 	bf := bytes.Buffer{}
+
+	// Requirement
+	bf.WriteString(fmt.Sprintf("### Requirement\n\n翻译人员信息登录：%s\n\n翻译指南：%s\n\n",
+		"https://baidu.com",
+		"https://baidu.com",
+	))
+
 	// _index 类文件无统一页面
 	if strings.Contains(file, "_index") {
 		bf.WriteString(fmt.Sprintf("## Source\n\n#### Files\n\n"))
 	} else {
-		bf.WriteString(fmt.Sprintf("## Source\n\n#### URL\n\n%s\n\n#### Files\n\n", source))
+		bf.WriteString(fmt.Sprintf("## Source\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
+			source, strings.TrimSuffix(path.Base(file), path.Ext(file)),
+			fmt.Sprintf("https://github.com/%s/%s/commits/%s/%s\n\n",
+				global.Conf.Repository.Spec.Source.Owner,
+				global.Conf.Repository.Spec.Source.Repository,
+				global.Conf.Repository.Spec.Source.Branch,
+				file,
+			),
+		))
 	}
 	for _, v := range *fs {
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("- https://github.com/%s/%s/tree/master/%s\n\n",
+		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s\n\n",
 			global.Conf.Repository.Spec.Source.Owner,
 			global.Conf.Repository.Spec.Source.Repository,
+			global.Conf.Repository.Spec.Source.Branch,
 			v))
 	}
 
@@ -119,9 +133,10 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 		bf.WriteString(fmt.Sprintf("## Translate\n\nURL：%s/%s\n\nHistory：%s\n\nFile：",
 			translate,
 			strings.TrimSuffix(path.Base(file), path.Ext(file)),
-			fmt.Sprintf("https://github.com/%s/%s/commits/zh/%s\n\n",
+			fmt.Sprintf("https://github.com/%s/%s/commits/%s/%s\n\n",
 				global.Conf.Repository.Spec.Translate.Owner,
 				global.Conf.Repository.Spec.Translate.Repository,
+				global.Conf.Repository.Spec.Translate.Branch,
 				file,
 			),
 		))
@@ -130,13 +145,15 @@ func (g generateFunctions) Body(remove bool, file, oldBody string) (body *string
 		if v == "" {
 			continue
 		}
-		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/zh/%s\n\n",
+		bf.WriteString(fmt.Sprintf("https://github.com/%s/%s/tree/%s/%s\n\n",
 			global.Conf.Repository.Spec.Translate.Owner,
 			global.Conf.Repository.Spec.Translate.Repository,
-			strings.ReplaceAll(v, "content/en", "content/zh"))) // TODO
+			global.Conf.Repository.Spec.Translate.Branch,
+			//strings.ReplaceAll(v, "content/en", "content/zh"),
+			v,
+		)) // TODO
 	}
-	t = bf.String()
-	return
+	return Get.String(bf.String()), len(*fs)
 }
 
 // extractFilesFromBody 提取 body 内的文件列表
