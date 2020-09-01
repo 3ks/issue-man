@@ -6,13 +6,13 @@ spec:
   source:
     owner: "envoyproxy"
     repository: "envoyproxy.github.io"
-    site: "www.envoyproxy.io/docs/envoy/v1.15.0/"
-    removePrefix: "docs/envoy/latest"
+    site: "www.envoyproxy.io/docs/envoy/latest/"
+    removePrefix: "docs/envoy/latest/_resource"
     branch: "master"
   translate:
     owner: "cloudnativeto"
     repository: "envoy"
-    site: "cloudnative.to/envoy/docs/envoy/v1.15.0/"
+    site: "cloudnative.to/envoy/docs/envoy/latest/"
     branch: "zh"
   workspace:
     owner: "cloudnativeto"
@@ -51,8 +51,10 @@ spec:
       description: "Getting Started 章节"
     - name: "chapter/Version"
       description: "Version history 章节"
-    - name: "chapter/Index"
+    - name: "chapter/About"
       description: "About the documentation 章节"
+    - name: "chapter/Index"
+      description: "Index 首页"
   port: ":8080"
   logLevel: "dev"
   verbose: false
@@ -99,7 +101,10 @@ spec:
     - path: "_sources/version_history"
       labels:
         - "chapter/Version"
-    - path: ""
+    - path: "_sources/about_docs.rst.txt"
+      labels:
+        - "chapter/About"
+    - path: "_sources/index.rst.txt"
       labels:
         - "chapter/Index"
 ---
